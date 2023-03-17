@@ -10,19 +10,78 @@ public enum CellType
     Water
 }
 
+////////// abstract cell class, cell categories classes and cell sub-categories classes
+
 public abstract class Cell
 {
     public CellularAutomata ca;
     public CellType type;
+    public bool hasBeenUpdated;
 
     public Cell(CellularAutomata ca) { this.ca = ca; }
     public virtual void UpdateCell(int x, int y)
     {
-        ca.newGrid[x, y] = ca.grid[x, y];
+        hasBeenUpdated= true;
     }
 }
 
-public class Stone : Cell
+public abstract class StaticCell : Cell
+{
+    public StaticCell(CellularAutomata ca) : base(ca) { }
+}
+
+public abstract class DynamicCell : Cell
+{
+    public Vector2 momentum;
+    public Vector2 deviation;
+
+    public DynamicCell(CellularAutomata ca) : base(ca) { }
+}
+
+public abstract class Fluid : DynamicCell
+{
+    float volume;
+
+    public Fluid(CellularAutomata ca) : base(ca) { }
+
+    public override void UpdateCell(int x, int y)
+    {
+        if (hasBeenUpdated) return;
+        hasBeenUpdated = true;
+
+        int dir = Random.Range(0, 2) * 2 - 1;
+
+        ca.grid[x, y] = null;
+        if (y - 1 >= 0 && ca.grid[x, y - 1] == null)
+        {
+            ca.grid[x, y - 1] = this;
+        }
+        else if (y - 1 >= 0 && x - dir >= 0 && x - dir < ca.sizeX && ca.grid[x - dir, y - 1] == null)
+        {
+            ca.grid[x - dir, y - 1] = this;
+        }
+        else if (y - 1 >= 0 && x + dir >= 0 && x + dir < ca.sizeX && ca.grid[x + dir, y - 1] == null)
+        {
+            ca.grid[x + dir, y - 1] = this;
+        }
+        else if (x - dir >= 0 && x - dir < ca.sizeX && ca.grid[x - dir, y] == null)
+        {
+            ca.grid[x - dir, y] = this;
+        }
+        else if (x + dir >= 0 && x + dir < ca.sizeX && ca.grid[x + dir, y] == null)
+        {
+            ca.grid[x + dir, y] = this;
+        }
+        else
+        {
+            ca.grid[x, y] = this;
+        }
+    }
+}
+
+////////// cell types
+
+public class Stone : StaticCell
 {
     public Stone(CellularAutomata ca) : base(ca)
     {
@@ -30,32 +89,20 @@ public class Stone : Cell
     }
 }
 
-public class Water : Cell
+public class Water : Fluid
 {
     public Water(CellularAutomata ca) : base(ca)
     {
         type = CellType.Water;
     }
-
-    public override void UpdateCell(int x, int y)
-    {
-        if (y - 1 >= 0 && ca.grid[x, y - 1] == null)
-        {
-            ca.newGrid[x, y - 1] = this;
-        }
-        else
-        {
-            base.UpdateCell(x, y);
-        }
-    }
 }
+
+////////// cellular automata grid class
 
 public class CellularAutomata : MonoBehaviour
 {
     public int sizeX, sizeY, scale = 1;
     public Cell[,] grid;
-    public Cell[,] newGrid;
-    public float[,] volume;
     public Dictionary<Vector2, float> gravitySources = new Dictionary<Vector2, float>();
 
     public GameObject cellPrefab;
@@ -66,7 +113,6 @@ public class CellularAutomata : MonoBehaviour
     {
         transform.localScale = new Vector3(scale, scale, scale);
         grid = new Cell[sizeX, sizeY];
-        newGrid = new Cell[sizeX, sizeY];
         cellsUI = new Image[sizeX, sizeY];
         for (int x = 0; x < sizeX; x++)
         {
@@ -82,13 +128,12 @@ public class CellularAutomata : MonoBehaviour
     // Update is called once per frame
     private void FixedUpdate()
     {
-        newGrid = new Cell[sizeX, sizeY];
-        for (int x = 0; x < sizeX; x++)
-            for (int y = 0; y < sizeY; y++)
+        for (int y = 0; y < sizeY; y++)
+            for (int x = 0; x < sizeX; x++)
+                if (grid[x, y] != null) grid[x, y].hasBeenUpdated = false;
+        for (int y = 0; y < sizeY; y++)
+            for (int x = 0; x < sizeX; x++)
                 if (grid[x, y] != null) grid[x, y].UpdateCell(x, y);
-        for (int x = 0; x < sizeX; x++)
-            for (int y = 0; y < sizeY; y++)
-                grid[x, y] = newGrid[x, y];
 
         RenderGrid();
     }

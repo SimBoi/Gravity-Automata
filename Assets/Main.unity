@@ -404,7 +404,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sizeX: 100
   sizeY: 100
-  scale: 2
+  scale: 5
   cellPrefab: {fileID: 4213994167793640817, guid: 3d2dd84c2918cd14cb94461b25fc87f0, type: 3}
 --- !u!4 &2139647474
 Transform:
@@ -432,6 +432,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf10a9d93211a9141be12e1f9706ae34, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  radius: 1
+  size: 1
   fillType: 1
-  mousePosition: {x: 0, y: 0, z: 0}
