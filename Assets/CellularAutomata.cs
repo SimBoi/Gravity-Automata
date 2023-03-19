@@ -21,7 +21,7 @@ public abstract class Cell
     public Cell(CellularAutomata ca) { this.ca = ca; }
     public virtual void UpdateCell(int x, int y)
     {
-        hasBeenUpdated= true;
+        hasBeenUpdated = true;
     }
 }
 
@@ -35,7 +35,16 @@ public abstract class DynamicCell : Cell
     public Vector2 momentum;
     public Vector2 deviation;
 
-    public DynamicCell(CellularAutomata ca) : base(ca) { }
+    public DynamicCell(CellularAutomata ca) : base(ca)
+    {
+        momentum = Vector2.zero;
+        deviation = Vector2.zero;
+    }
+
+    public void ApplyForces()
+    {
+        momentum += ca.gravity * (1.0f / ca.fps);
+    }
 }
 
 public abstract class Fluid : DynamicCell
@@ -49,32 +58,64 @@ public abstract class Fluid : DynamicCell
         if (hasBeenUpdated) return;
         hasBeenUpdated = true;
 
-        int dir = Random.Range(0, 2) * 2 - 1;
+        ApplyForces();
 
         ca.grid[x, y] = null;
-        if (y - 1 >= 0 && ca.grid[x, y - 1] == null)
+
+        // get the fall path using bresenham algorithm and the current momentum
+        Vector2Int start = new Vector2Int(x, y);
+        Vector2Int end = CellularVector.Round(start + momentum);
+        List<Vector2Int> fallPath = start != end ? CellularVector.Bresenham(start, end) : new List<Vector2Int>() { start };
+
+        // check the farthest distance the cell can fall down(momentum direction) to using the bresenham fall line
+        fallPath.RemoveAt(0); // dont check the starting position
+        Vector2Int fallPoint = start; // the farthest point
+        foreach (Vector2Int p in fallPath)
         {
-            ca.grid[x, y - 1] = this;
+            if (ca.InRange(p) && ca.grid[p.x, p.y] == null) fallPoint = p;
+            else break;
         }
-        else if (y - 1 >= 0 && x - dir >= 0 && x - dir < ca.sizeX && ca.grid[x - dir, y - 1] == null)
+
+        // reset the momentum if the cell hit the ground
+        if (fallPoint != end) momentum = Vector2Int.zero;
+
+        // fall down to the farthest fall point
+        if (fallPoint != start)
         {
-            ca.grid[x - dir, y - 1] = this;
+            ca.grid[fallPoint.x, fallPoint.y] = this;
         }
-        else if (y - 1 >= 0 && x + dir >= 0 && x + dir < ca.sizeX && ca.grid[x + dir, y - 1] == null)
-        {
-            ca.grid[x + dir, y - 1] = this;
-        }
-        else if (x - dir >= 0 && x - dir < ca.sizeX && ca.grid[x - dir, y] == null)
-        {
-            ca.grid[x - dir, y] = this;
-        }
-        else if (x + dir >= 0 && x + dir < ca.sizeX && ca.grid[x + dir, y] == null)
-        {
-            ca.grid[x + dir, y] = this;
-        }
+        // if the cell cant fall down, check the sides to flow to
         else
         {
-            ca.grid[x, y] = this;
+            Vector2 down = momentum.normalized;
+            Vector2 side = Vector2.Perpendicular(down).normalized * (Random.Range(0, 2) * 2 - 1);
+
+            Vector2Int side1Diagonal = CellularVector.Round(start + down + side);
+            Vector2Int side2Diagonal = CellularVector.Round(start + down - side);
+            Vector2Int side1 = CellularVector.Round(start + side);
+            Vector2Int side2 = CellularVector.Round(start - side);
+
+            if (ca.InRange(side1Diagonal) && ca.grid[side1Diagonal.x, side1Diagonal.y] == null)
+            {
+                ca.grid[side1Diagonal.x, side1Diagonal.y] = this;
+            }
+            else if (ca.InRange(side2Diagonal) && ca.grid[side2Diagonal.x, side2Diagonal.y] == null)
+            {
+                ca.grid[side2Diagonal.x, side2Diagonal.y] = this;
+            }
+            else if (ca.InRange(side1) && ca.grid[side1.x, side1.y] == null)
+            {
+                ca.grid[side1.x, side1.y] = this;
+            }
+            else if (ca.InRange(side2) && ca.grid[side2.x, side2.y] == null)
+            {
+                ca.grid[side2.x, side2.y] = this;
+            }
+            // stay in place if the sides are also occupied
+            else
+            {
+                ca.grid[x, y] = this;
+            }
         }
     }
 }
@@ -101,9 +142,10 @@ public class Water : Fluid
 
 public class CellularAutomata : MonoBehaviour
 {
-    public int sizeX, sizeY, scale = 1;
+    public int sizeX, sizeY, scale = 1, fps = 30;
     public Cell[,] grid;
-    public Dictionary<Vector2, float> gravitySources = new Dictionary<Vector2, float>();
+    public Vector2 gravity;
+    //public Dictionary<Vector2, float> gravitySources = new Dictionary<Vector2, float>();
 
     public GameObject cellPrefab;
     private Image[,] cellsUI;
@@ -128,11 +170,21 @@ public class CellularAutomata : MonoBehaviour
     // Update is called once per frame
     private void FixedUpdate()
     {
+        int[] shuffledIndexes = new int[sizeX];
+        for (int i = 0; i < sizeX; i++) shuffledIndexes[i] = i;
+        for (int i = sizeX; i > 1; i--)
+        {
+            int p = Random.Range(0, i);
+            int tmp = shuffledIndexes[i-1];
+            shuffledIndexes[i-1] = shuffledIndexes[p];
+            shuffledIndexes[p] = tmp;
+        }
+
         for (int y = 0; y < sizeY; y++)
             for (int x = 0; x < sizeX; x++)
                 if (grid[x, y] != null) grid[x, y].hasBeenUpdated = false;
         for (int y = 0; y < sizeY; y++)
-            for (int x = 0; x < sizeX; x++)
+            foreach (int x in shuffledIndexes)
                 if (grid[x, y] != null) grid[x, y].UpdateCell(x, y);
 
         RenderGrid();
@@ -152,5 +204,15 @@ public class CellularAutomata : MonoBehaviour
                     cellsUI[x, y].color = Color.blue;
             }
         }
+    }
+
+    public bool InRange(Vector2Int coords)
+    {
+        return InRange(coords.x, coords.y);
+    }
+
+    public bool InRange(int x, int y)
+    {
+        return x >= 0 && x < sizeX && y >= 0 && y < sizeY;
     }
 }

@@ -405,6 +405,8 @@ MonoBehaviour:
   sizeX: 100
   sizeY: 100
   scale: 5
+  fps: 30
+  gravity: {x: 0, y: -10}
   cellPrefab: {fileID: 4213994167793640817, guid: 3d2dd84c2918cd14cb94461b25fc87f0, type: 3}
 --- !u!4 &2139647474
 Transform:
