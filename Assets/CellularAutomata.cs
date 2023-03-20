@@ -51,7 +51,10 @@ public abstract class Fluid : DynamicCell
 {
     float volume;
 
-    public Fluid(CellularAutomata ca) : base(ca) { }
+    public Fluid(CellularAutomata ca, float volume = 1) : base(ca)
+    {
+        this.volume = volume;
+    }
 
     public override void UpdateCell(int x, int y)
     {
@@ -96,28 +99,28 @@ public abstract class Fluid : DynamicCell
         else
         {
             Vector2 down = momentum.normalized;
-            Vector2 side = Vector2.Perpendicular(down).normalized * (Random.Range(0, 2) * 2 - 1);
+            Vector2 right = Vector2.Perpendicular(down).normalized;
 
-            Vector2Int side1Diagonal = CellularVector.Round(start + down + side);
-            Vector2Int side2Diagonal = CellularVector.Round(start + down - side);
-            Vector2Int side1 = CellularVector.Round(start + side);
-            Vector2Int side2 = CellularVector.Round(start - side);
+            Vector2Int rightDiagonalCell = CellularVector.Round(start + down + right);
+            Vector2Int leftDiagonalCell = CellularVector.Round(start + down - right);
+            Vector2Int rightCell = CellularVector.Round(start + right);
+            Vector2Int leftCell = CellularVector.Round(start - right);
 
-            if (ca.InRange(side1Diagonal) && ca.grid[side1Diagonal.x, side1Diagonal.y] == null)
+            if (ca.InRange(rightDiagonalCell) && ca.grid[rightDiagonalCell.x, rightDiagonalCell.y] == null)
             {
-                ca.grid[side1Diagonal.x, side1Diagonal.y] = this;
+                ca.grid[rightDiagonalCell.x, rightDiagonalCell.y] = this;
             }
-            else if (ca.InRange(side2Diagonal) && ca.grid[side2Diagonal.x, side2Diagonal.y] == null)
+            else if (ca.InRange(leftDiagonalCell) && ca.grid[leftDiagonalCell.x, leftDiagonalCell.y] == null)
             {
-                ca.grid[side2Diagonal.x, side2Diagonal.y] = this;
+                ca.grid[leftDiagonalCell.x, leftDiagonalCell.y] = this;
             }
-            else if (ca.InRange(side1) && ca.grid[side1.x, side1.y] == null)
+            else if (ca.InRange(rightCell) && ca.grid[rightCell.x, rightCell.y] == null)
             {
-                ca.grid[side1.x, side1.y] = this;
+                ca.grid[rightCell.x, rightCell.y] = this;
             }
-            else if (ca.InRange(side2) && ca.grid[side2.x, side2.y] == null)
+            else if (ca.InRange(leftCell) && ca.grid[leftCell.x, leftCell.y] == null)
             {
-                ca.grid[side2.x, side2.y] = this;
+                ca.grid[leftCell.x, leftCell.y] = this;
             }
             // stay in place if the sides are also occupied
             else
