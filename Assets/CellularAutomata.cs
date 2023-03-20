@@ -62,9 +62,9 @@ public abstract class Fluid : DynamicCell
 
         ca.grid[x, y] = null;
 
-        // get the fall path using bresenham algorithm and the current momentum
+        // get the fall path using the bresenham algorithm on the current momentum and deviation
         Vector2Int start = new Vector2Int(x, y);
-        Vector2Int end = CellularVector.Round(start + momentum);
+        Vector2Int end = CellularVector.Round(start + deviation + momentum);
         List<Vector2Int> fallPath = start != end ? CellularVector.Bresenham(start, end) : new List<Vector2Int>() { start };
 
         // check the farthest distance the cell can fall down(momentum direction) to using the bresenham fall line
@@ -76,8 +76,16 @@ public abstract class Fluid : DynamicCell
             else break;
         }
 
-        // reset the momentum if the cell hit the ground
-        if (fallPoint != end) momentum = Vector2Int.zero;
+        // reset the momentum and deviation if the cell hit the ground, otherwise update the deviation vector
+        if (fallPoint == end)
+        {
+            deviation = start + deviation + momentum - end;
+        }
+        if (fallPoint != end)
+        {
+            momentum = Vector2.zero;
+            deviation = Vector2.zero;
+        }
 
         // fall down to the farthest fall point
         if (fallPoint != start)
