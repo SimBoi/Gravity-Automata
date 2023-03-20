@@ -4,65 +4,106 @@ using UnityEngine;
 
 public static class CellularVector
 {
-    public static List<Vector2Int> Bresenham(Vector2Int start, Vector2Int end)
-    {
-        List<Vector2Int> line = new List<Vector2Int>();
-
-        ///////////////// to be impliminted
-
-        // temporary implimintation
-        if (Mathf.Abs(start.x - end.x) > Mathf.Abs(start.y - end.y))
-        {
-            bool reverse = false;
-            if (start.x > end.x)
-            {
-                reverse = true;
-                Vector2Int tmp = start;
-                start = end;
-                end = tmp;
-            }
-
-            float a = (end.y - start.y) / (end.x - start.x);
-            float b = start.y - a * start.x;
-
-            for (int x = start.x; x <= end.x; x++)
-            {
-                int y = Mathf.RoundToInt(a * x + b);
-                line.Add(new Vector2Int(x, y));
-            }
-
-            if (reverse) line.Reverse();
-        }
-        else
-        {
-            bool reverse = false;
-            if (start.y > end.y)
-            {
-                reverse = true;
-                Vector2Int tmp = start;
-                start = end;
-                end = tmp;
-            }
-
-            float a = (end.x - start.x) / (end.y - start.y);
-            float b = start.x - a * start.y;
-
-            for (int y = start.y; y <= end.y; y++)
-            {
-                int x = Mathf.RoundToInt(a * y + b);
-                line.Add(new Vector2Int(x, y));
-            }
-
-            if (reverse) line.Reverse();
-        }
-
-        return line;
-    }
-
     public static Vector2Int Round(Vector2 coords)
     {
         int x = Mathf.RoundToInt(coords.x);
         int y = Mathf.RoundToInt(coords.y);
         return new Vector2Int(x, y);
+    }
+
+    public static List<Vector2Int> Bresenham(Vector2Int start, Vector2Int end)
+    {
+        if (Mathf.Abs(end.x - start.x) > Mathf.Abs(end.y - start.y))
+        {
+            if (start.x < end.x)
+            {
+                return BresenhamLowLine(start, end);
+            }
+            else
+            {
+                List<Vector2Int> line = BresenhamLowLine(end, start);
+                line.Reverse();
+                return line;
+            }
+        }
+        else
+        {
+            if (start.y < end.y)
+            {
+                return BresenhamHighLine(start, end);
+            }
+            else
+            {
+                List<Vector2Int> line = BresenhamHighLine(end, start);
+                line.Reverse();
+                return line;
+            }
+        }
+    }
+
+    private static List<Vector2Int> BresenhamLowLine(Vector2Int start, Vector2Int end)
+	{
+        List<Vector2Int> line = new List<Vector2Int>();
+
+        int dx = end.x - start.x;
+        int dy = end.y - start.y;
+
+        int yi = dy < 0 ? -1 : 1;
+        dy = dy* yi;
+
+        int d = 2 * dy - dx;
+        int east = 2 * dy;
+        int northeast = 2 * (dy - dx);
+
+        int x = start.x, y = start.y;
+	    while (x <= end.x)
+	    {
+            line.Add(new Vector2Int(x, y));
+            if (d > 0)
+	        {
+		        d += northeast;
+	            y += yi;
+	        }
+            else
+            {
+                d += east;
+            }
+            x++;
+		}
+
+        return line;
+	}
+
+    private static List<Vector2Int> BresenhamHighLine(Vector2Int start, Vector2Int end)
+    {
+        List<Vector2Int> line = new List<Vector2Int>();
+
+        int dx = end.x - start.x;
+        int dy = end.y - start.y;
+
+        int xi = dx < 0 ? -1 : 1;
+        dx = dx * xi;
+
+        int d = 2 * dx - dy;
+        int east = 2 * dx;
+        int southeast = 2 * (dx - dy);
+
+        int x = start.x, y = start.y;
+        while (y <= end.y)
+        {
+            line.Add(new Vector2Int(x, y));
+            if (d > 0)
+            {
+                d += southeast;
+                x += xi;
+            }
+            else
+            {
+                d += east;
+            }
+            y++;
+        }
+
+        return line;
     }
 }
