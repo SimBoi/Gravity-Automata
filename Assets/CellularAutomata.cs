@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Net.Http.Headers;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -18,7 +20,13 @@ public abstract class Cell
     public CellType type;
     public bool hasBeenUpdated;
 
-    public Cell(CellularAutomata ca) { this.ca = ca; }
+    public Cell(CellularAutomata ca)
+    {
+        this.ca = ca;
+    }
+
+    public abstract Cell NewCell(object[] argv);
+
     public virtual void UpdateCell(int x, int y)
     {
         hasBeenUpdated = true;
@@ -49,11 +57,15 @@ public abstract class DynamicCell : Cell
 
 public abstract class Fluid : DynamicCell
 {
-    float volume;
+    public float volume;
+    public float maxCompressedVolume;
+    public const float maxVolume = 1;
+    public const float compression = 0.15f;
 
     public Fluid(CellularAutomata ca, float volume = 1) : base(ca)
     {
         this.volume = volume;
+        maxCompressedVolume = maxVolume;
     }
 
     public override void UpdateCell(int x, int y)
@@ -65,69 +77,112 @@ public abstract class Fluid : DynamicCell
 
         ca.grid[x, y] = null;
 
-        // get the fall path using the bresenham algorithm on the current momentum and deviation
+        // calculate start point and direction vectors
         Vector2Int start = new Vector2Int(x, y);
+        Vector2 down = momentum.normalized;
+        Vector2 right = Vector2.Perpendicular(down).normalized;
+
+        // distribute the volume into neightboring cells
+        FlowDown(start);
+        if (volume == 0) return;
+        FlowDiagonally(start, down, right);
+        if (volume == 0) return;
+        FlowSideways(start, right);
+        if (volume == 0) return;
+        FlowUp(start, -down);
+
+        // keep the remaining volume in the current cell
+        if (volume != 0) ca.grid[x, y] = this;
+    }
+
+    // flow in the direction of the momentum
+    public void FlowDown(Vector2Int start)
+    {
+        // get the fall path using the bresenham algorithm on the current momentum and deviation
         Vector2Int end = CellularVector.Round(start + deviation + momentum);
         List<Vector2Int> fallPath = start != end ? CellularVector.Bresenham(start, end) : new List<Vector2Int>() { start };
 
         // check the farthest distance the cell can fall down(momentum direction) to using the bresenham fall line
-        fallPath.RemoveAt(0); // dont check the starting position
-        Vector2Int fallPoint = start; // the farthest point
-        foreach (Vector2Int p in fallPath)
+        int farthestPoint = 0; // the farthest point
+        for (int i = 0; i < fallPath.Count; i++)
         {
-            if (ca.InRange(p) && ca.grid[p.x, p.y] == null) fallPoint = p;
+            Vector2Int p = fallPath[i];
+            if (ca.InRange(p) && (ca.grid[p.x, p.y] == null || ca.grid[p.x, p.y].type == CellType.Water)) farthestPoint = i;
             else break;
         }
 
         // reset the momentum and deviation if the cell hit the ground, otherwise update the deviation vector
-        if (fallPoint == end)
+        if (farthestPoint == fallPath.Count - 1)
         {
             deviation = start + deviation + momentum - end;
         }
-        if (fallPoint != end)
+        else
         {
             momentum = Vector2.zero;
             deviation = Vector2.zero;
         }
 
-        // fall down to the farthest fall point
-        if (fallPoint != start)
+        // flow down to the cells on the fallPath starting from the farthest fall point
+        for (int i = farthestPoint; i > 0; i--)
         {
-            ca.grid[fallPoint.x, fallPoint.y] = this;
-        }
-        // if the cell cant fall down, check the sides to flow to
-        else
-        {
-            Vector2 down = momentum.normalized;
-            Vector2 right = Vector2.Perpendicular(down).normalized;
+            Vector2Int p = fallPath[i];
+            Vector2Int upCell = fallPath[i - 1];
 
-            Vector2Int rightDiagonalCell = CellularVector.Round(start + down + right);
-            Vector2Int leftDiagonalCell = CellularVector.Round(start + down - right);
-            Vector2Int rightCell = CellularVector.Round(start + right);
-            Vector2Int leftCell = CellularVector.Round(start - right);
-
-            if (ca.InRange(rightDiagonalCell) && ca.grid[rightDiagonalCell.x, rightDiagonalCell.y] == null)
+            if (ca.grid[p.x, p.y] == null)
             {
-                ca.grid[rightDiagonalCell.x, rightDiagonalCell.y] = this;
+                float newCellCompression = ca.grid[upCell.x, upCell.y] != null ? ((Fluid)ca.grid[upCell.x, upCell.y]).maxCompressedVolume + compression : maxVolume;
+                float newCellVolume = Mathf.Min(newCellCompression, volume);
+                volume -= newCellVolume;
+                Fluid newCell = (Fluid)NewCell(new object[] { ca, newCellVolume });
+                newCell.maxCompressedVolume = newCellCompression;
+                newCell.hasBeenUpdated = true;
+                ca.grid[p.x, p.y] = newCell;
             }
-            else if (ca.InRange(leftDiagonalCell) && ca.grid[leftDiagonalCell.x, leftDiagonalCell.y] == null)
-            {
-                ca.grid[leftDiagonalCell.x, leftDiagonalCell.y] = this;
-            }
-            else if (ca.InRange(rightCell) && ca.grid[rightCell.x, rightCell.y] == null)
-            {
-                ca.grid[rightCell.x, rightCell.y] = this;
-            }
-            else if (ca.InRange(leftCell) && ca.grid[leftCell.x, leftCell.y] == null)
-            {
-                ca.grid[leftCell.x, leftCell.y] = this;
-            }
-            // stay in place if the sides are also occupied
             else
             {
-                ca.grid[x, y] = this;
+                Fluid pCell = (Fluid)ca.grid[p.x, p.y];
+                float transfer = Mathf.Min(pCell.maxCompressedVolume - pCell.volume, volume);
+                pCell.volume += transfer;
+                volume -= transfer;
             }
         }
+    }
+
+    public void FlowDiagonally(Vector2Int start, Vector2 down, Vector2 right)
+    {
+        /////////////////////////////
+        Vector2Int rightDiagonalCell = CellularVector.Round(start + down + right);
+        Vector2Int leftDiagonalCell = CellularVector.Round(start + down - right);
+
+        if (ca.InRange(rightDiagonalCell) && ca.grid[rightDiagonalCell.x, rightDiagonalCell.y] == null)
+        {
+            ca.grid[rightDiagonalCell.x, rightDiagonalCell.y] = this;
+        }
+        else if (ca.InRange(leftDiagonalCell) && ca.grid[leftDiagonalCell.x, leftDiagonalCell.y] == null)
+        {
+            ca.grid[leftDiagonalCell.x, leftDiagonalCell.y] = this;
+        }
+    }
+
+    public void FlowSideways(Vector2Int start, Vector2 right)
+    {
+        /////////////////////////////
+        Vector2Int rightCell = CellularVector.Round(start + right);
+        Vector2Int leftCell = CellularVector.Round(start - right);
+
+        if (ca.InRange(rightCell) && ca.grid[rightCell.x, rightCell.y] == null)
+        {
+            ca.grid[rightCell.x, rightCell.y] = this;
+        }
+        else if (ca.InRange(leftCell) && ca.grid[leftCell.x, leftCell.y] == null)
+        {
+            ca.grid[leftCell.x, leftCell.y] = this;
+        }
+    }
+
+    public void FlowUp(Vector2Int start, Vector2 up)
+    {
+
     }
 }
 
@@ -139,13 +194,24 @@ public class Stone : StaticCell
     {
         type = CellType.Stone;
     }
+
+    public override Cell NewCell(object[] argv)
+    {
+        return new Stone((CellularAutomata)argv[0]);
+    }
 }
 
 public class Water : Fluid
 {
-    public Water(CellularAutomata ca) : base(ca)
+    public Water(CellularAutomata ca, float volume = 1) : base(ca)
     {
         type = CellType.Water;
+        this.volume = volume;
+    }
+
+    public override Cell NewCell(object[] argv)
+    {
+        return new Water((CellularAutomata)argv[0], (float)argv[1]);
     }
 }
 
