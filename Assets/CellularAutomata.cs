@@ -52,6 +52,7 @@ public abstract class DynamicCell : Cell
     public void ApplyForces()
     {
         momentum += ca.gravity * (1.0f / ca.fps);
+        if (momentum.magnitude < 1) momentum.Normalize();
     }
 }
 
@@ -59,13 +60,14 @@ public abstract class Fluid : DynamicCell
 {
     public float volume;
     public float maxCompressedVolume;
-    public const float maxVolume = 1;
+    public const float defaultMaxVolume = 1;
     public const float compression = 0.15f;
+    public const float minFlow = 0.1f;
 
     public Fluid(CellularAutomata ca, float volume = 1) : base(ca)
     {
         this.volume = volume;
-        maxCompressedVolume = maxVolume;
+        maxCompressedVolume = defaultMaxVolume;
     }
 
     public override void UpdateCell(int x, int y)
@@ -75,27 +77,34 @@ public abstract class Fluid : DynamicCell
 
         ApplyForces();
 
-        ca.grid[x, y] = null;
-
         // calculate start point and direction vectors
         Vector2Int start = new Vector2Int(x, y);
         Vector2 down = momentum.normalized;
         Vector2 right = Vector2.Perpendicular(down).normalized;
 
-        // distribute the volume into neightboring cells
+        UpdateCompression(start, -down);
+
+        ca.grid[x, y] = null;
+
+        // flow into neighboring cells
         FlowDown(start);
-        if (volume == 0) return;
+        if (volume < minFlow) return;
         FlowDiagonally(start, down, right);
-        if (volume == 0) return;
+        if (volume < minFlow) return;
         FlowSideways(start, -down, right);
-        if (volume == 0) return;
+        if (volume < minFlow) return;
         FlowUp(start, -down);
 
         // keep the remaining volume in the current cell
-        if (volume != 0) ca.grid[x, y] = this;
+        if (volume > 0) ca.grid[x, y] = this;
     }
 
-    // flow in the direction of the momentum
+    public void UpdateCompression(Vector2Int p, Vector2 up)
+    {
+        Vector2Int upCell = CellularVector.Round(p + up);
+        if (ca.GetCellType(upCell) == type) maxCompressedVolume = ((Fluid)ca.grid[upCell.x, upCell.y]).maxCompressedVolume + compression;
+    }
+
     public void FlowDown(Vector2Int start)
     {
         // get the fall path using the bresenham algorithm on the current momentum and deviation
@@ -107,7 +116,7 @@ public abstract class Fluid : DynamicCell
         for (int i = 0; i < fallPath.Count; i++)
         {
             Vector2Int p = fallPath[i];
-            if (ca.InRange(p) && (ca.grid[p.x, p.y] == null || ca.grid[p.x, p.y].type == CellType.Water)) farthestPoint = i;
+            if (ca.InRange(p) && (ca.grid[p.x, p.y] == null || ca.grid[p.x, p.y].type == type)) farthestPoint = i;
             else break;
         }
 
@@ -126,22 +135,24 @@ public abstract class Fluid : DynamicCell
         for (int i = farthestPoint; i > 0; i--)
         {
             Vector2Int p = fallPath[i];
-            Vector2Int upCell = fallPath[i - 1];
-
-            FlowToCell(p, upCell, volume);
+            if (ca.grid[p.x, p.y] == null) FlowToEmptyCell(p, volume);
+            else FlowToFluidCell(p, volume);
+            if (volume <= 0) return;
         }
     }
 
     public void FlowDiagonally(Vector2Int start, Vector2 down, Vector2 right)
     {
-        Vector2 up = -down;
-        List<Vector2Int> flowTo = new List<Vector2Int>();
-        flowTo.Add(CellularVector.Round(start + down + right));
-        flowTo.Add(CellularVector.Round(start + down - right));
+        List<Vector2Int> flowTo = new List<Vector2Int>
+        {
+            CellularVector.Round(start + down + right),
+            CellularVector.Round(start + down - right)
+        };
 
         for (int i = 0; i < flowTo.Count; i++)
         {
-            if (ca.InRange(flowTo[i]) || (ca.grid[flowTo[i].x, flowTo[i].y] != null && ca.grid[flowTo[i].x, flowTo[i].y].type != CellType.Water))
+            CellType flowToType = ca.GetCellType(flowTo[i]);
+            if (!ca.InRange(flowTo[i]) || (flowToType != CellType.Empty && flowToType != type))
             {
                 flowTo.RemoveAt(i);
                 i--;
@@ -154,9 +165,10 @@ public abstract class Fluid : DynamicCell
             for (int i = 0; i < flowTo.Count; i++)
             {
                 Vector2Int p = flowTo[i];
-                volume -= FlowToCell(p, up, split);
+                if (ca.grid[p.x, p.y] == null) FlowToEmptyCell(p, split);
+                else FlowToFluidCell(p, split);
                 Fluid pCell = (Fluid)ca.grid[p.x, p.y];
-                if (pCell.volume == pCell.maxCompressedVolume)
+                if (pCell.volume >= pCell.maxCompressedVolume)
                 {
                     flowTo.RemoveAt(i);
                     i--;
@@ -167,17 +179,39 @@ public abstract class Fluid : DynamicCell
 
     public void FlowSideways(Vector2Int start, Vector2 up, Vector2 right)
     {
-        /////////////////////////////
-        Vector2Int rightCell = CellularVector.Round(start + right);
-        Vector2Int leftCell = CellularVector.Round(start - right);
+        List<Vector2Int> flowTo = new List<Vector2Int>
+        {
+            CellularVector.Round(start + right),
+            CellularVector.Round(start - right)
+        };
 
-        if (ca.InRange(rightCell) && ca.grid[rightCell.x, rightCell.y] == null)
+        for (int i = 0; i < flowTo.Count; i++)
         {
-            ca.grid[rightCell.x, rightCell.y] = this;
+            CellType flowToType = ca.GetCellType(flowTo[i]);
+            if (!ca.InRange(flowTo[i]) ||
+                (flowToType != CellType.Empty && flowToType != type) ||
+                (flowToType == type && ((Fluid)ca.grid[flowTo[i].x, flowTo[i].y]).volume >= volume))
+            {
+                flowTo.RemoveAt(i);
+                i--;
+            }
         }
-        else if (ca.InRange(leftCell) && ca.grid[leftCell.x, leftCell.y] == null)
+
+        while (flowTo.Count > 0 && volume > minFlow)
         {
-            ca.grid[leftCell.x, leftCell.y] = this;
+            float split = volume / (flowTo.Count + 1);
+            for (int i = 0; i < flowTo.Count; i++)
+            {
+                Vector2Int p = flowTo[i];
+                if (ca.grid[p.x, p.y] == null) FlowToEmptyCell(p, split);
+                else FlowToFluidCell(p, split);
+                Fluid pCell = (Fluid)ca.grid[p.x, p.y];
+                if (pCell.volume == pCell.maxCompressedVolume)
+                {
+                    flowTo.RemoveAt(i);
+                    i--;
+                }
+            }
         }
     }
 
@@ -186,54 +220,23 @@ public abstract class Fluid : DynamicCell
 
     }
 
-    public float FlowToCell(Vector2Int p, Vector2 up, float maxFlow)
+    public float FlowToEmptyCell(Vector2Int p, float maxFlow)
     {
-        float transfer;
-
-        if (ca.grid[p.x, p.y] == null)
-        {
-            Vector2Int upCell = CellularVector.Round(p + up);
-            float newCellCompression = ca.grid[upCell.x, upCell.y] != null ? ((Fluid)ca.grid[upCell.x, upCell.y]).maxCompressedVolume + compression : maxVolume;
-            transfer = Mathf.Min(newCellCompression, maxFlow);
-            volume -= transfer;
-            Fluid newCell = (Fluid)NewCell(new object[] { ca, transfer });
-            newCell.maxCompressedVolume = newCellCompression;
-            newCell.hasBeenUpdated = true;
-            ca.grid[p.x, p.y] = newCell;
-        }
-        else
-        {
-            Fluid pCell = (Fluid)ca.grid[p.x, p.y];
-            transfer = Mathf.Min(pCell.maxCompressedVolume - pCell.volume, maxFlow);
-            pCell.volume += transfer;
-            volume -= transfer;
-        }
-
+        float transfer = Mathf.Min(defaultMaxVolume, maxFlow);
+        volume -= transfer;
+        Fluid newCell = (Fluid)NewCell(new object[] { ca, transfer });
+        newCell.hasBeenUpdated = true;
+        newCell.momentum = momentum;
+        ca.grid[p.x, p.y] = newCell;
         return transfer;
     }
 
-    public float FlowToCell(Vector2Int p, Vector2Int upCell, float maxFlow)
+    public float FlowToFluidCell(Vector2Int p, float maxFlow)
     {
-        float transfer;
-
-        if (ca.grid[p.x, p.y] == null)
-        {
-            float newCellCompression = ca.grid[upCell.x, upCell.y] != null ? ((Fluid)ca.grid[upCell.x, upCell.y]).maxCompressedVolume + compression : maxVolume;
-            transfer = Mathf.Min(newCellCompression, maxFlow);
-            volume -= transfer;
-            Fluid newCell = (Fluid)NewCell(new object[] { ca, transfer });
-            newCell.maxCompressedVolume = newCellCompression;
-            newCell.hasBeenUpdated = true;
-            ca.grid[p.x, p.y] = newCell;
-        }
-        else
-        {
-            Fluid pCell = (Fluid)ca.grid[p.x, p.y];
-            transfer = Mathf.Min(pCell.maxCompressedVolume - pCell.volume, maxFlow);
-            pCell.volume += transfer;
-            volume -= transfer;
-        }
-
+        Fluid pCell = (Fluid)ca.grid[p.x, p.y];
+        float transfer = Mathf.Min(pCell.maxCompressedVolume - pCell.volume, maxFlow);
+        pCell.volume += transfer;
+        volume -= transfer;
         return transfer;
     }
 }
@@ -343,5 +346,10 @@ public class CellularAutomata : MonoBehaviour
     public bool InRange(int x, int y)
     {
         return x >= 0 && x < sizeX && y >= 0 && y < sizeY;
+    }
+
+    public CellType GetCellType(Vector2Int p)
+    {
+        return !InRange(p) || grid[p.x, p.y] == null ? CellType.Empty : grid[p.x, p.y].type;
     }
 }
