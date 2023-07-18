@@ -21,8 +21,8 @@ public class Brush : MonoBehaviour
         // get selected cell index
         Vector3 mousePosition = Input.mousePosition;
         mousePosition = ca.transform.InverseTransformPoint(mousePosition);
-        mousePosition.x += ca.sizeX / 2 + 0.5f;
-        mousePosition.y += ca.sizeY / 2 + 0.5f;
+        mousePosition.x += ca.size / 2 + 0.5f;
+        mousePosition.y += ca.size / 2 + 0.5f;
         Vector3Int cellIndex = Vector3Int.FloorToInt(mousePosition);
 
         // get user input
@@ -44,7 +44,7 @@ public class Brush : MonoBehaviour
                 int yRange = (int)Mathf.Sqrt(radius - Mathf.Pow(x - cellIndex.x, 2));
                 for (int y = -yRange + cellIndex.y; y <= yRange + cellIndex.y; y++)
                 {
-                    if (x >= ca.sizeX || x < 0 || y >= ca.sizeY || y < 0) continue;
+                    if (!ca.InRange(new Vector2Int(x, y))) continue;
 
                     CellType currentType = CellType.Empty;
                     if (ca.grid[x, y] != null) currentType = ca.grid[x, y].type;
@@ -52,7 +52,11 @@ public class Brush : MonoBehaviour
                     if (fillType == currentType) continue;
 
                     if (fillType == CellType.Stone) ca.grid[x, y] = new Stone(ca);
-                    if (fillType == CellType.Water) ca.grid[x, y] = new Water(ca);
+                    if (fillType == CellType.Water)
+                    {
+                        ca.grid[x, y] = new Water(ca);
+                        ((Fluid)ca.grid[x, y]).UpdateCompression(new Vector2Int(x, y));
+                    }
                     if (fillType == CellType.Empty) ca.grid[x, y] = null;
                 }
             }

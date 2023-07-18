@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http.Headers;
 using UnityEditor;
 using UnityEngine;
@@ -10,6 +11,86 @@ public enum CellType
     Empty,
     Stone,
     Water
+}
+
+public class TraversingLines
+{
+    private int size;
+
+    public Vector2Int[] verticalStartPoints;
+    public Vector2Int[] horizontalStartPoints;
+    public List<Vector2Int> down;
+    public Vector2Int[] horizontal;
+
+    public int[] shuffledIndexes;
+
+    public TraversingLines(int size)
+    {
+        this.size = size;
+        verticalStartPoints = new Vector2Int[2 * size];
+        horizontalStartPoints = new Vector2Int[2 * size];
+        horizontal = new Vector2Int[size];
+        shuffledIndexes = new int[size];
+    }
+
+    public void ShuffleIndexes()
+    {
+        for (int i = 0; i < size; i++) shuffledIndexes[i] = i;
+        for (int i = size; i > 1; i--)
+        {
+            int p = Random.Range(0, i);
+            int tmp = shuffledIndexes[i - 1];
+            shuffledIndexes[i - 1] = shuffledIndexes[p];
+            shuffledIndexes[p] = tmp;
+        }
+    }
+
+    public void GenerateLines(List<Vector2Int> down)
+    {
+        // vertical traversing
+        this.down = down;
+        Vector2 downDir = ((Vector2)down[1] - (Vector2)down[0]).normalized;
+        Vector2 downNormalDir = GenerateStartPoints(size, downDir, ref verticalStartPoints);
+
+        // horizontal traversing
+        Vector2 horizontalDir = Vector2.Perpendicular(downDir).normalized;
+        if (Vector2.Dot(downNormalDir, horizontalDir) < 0) horizontalDir *= -1;
+        horizontal = CellularVector.Bresenham(Vector2Int.zero, Vector2Int.FloorToInt(horizontalDir * size * 2)).GetRange(0, size).ToArray();
+        GenerateStartPoints(size, horizontalDir, ref horizontalStartPoints);
+    }
+
+    private static Vector2 GenerateStartPoints(int size, Vector2 dir, ref Vector2Int[] startPoints) // returns normal to the start points plane
+    {
+        Vector2 normalDir;
+        Vector2 planeCenter;
+        if (Vector2.Angle(Vector2.down, dir) <= 45f)
+        {
+            normalDir = Vector2.down;
+            planeCenter = new Vector2Int(size / 2, size - 1);
+        }
+        else if (Vector2.Angle(Vector2.up, dir) <= 45f)
+        {
+            normalDir = Vector2.up;
+            planeCenter = new Vector2(size / 2, 0);
+        }
+        else if (Vector2.Angle(Vector2.left, dir) <= 45f)
+        {
+            normalDir = Vector2.left;
+            planeCenter = new Vector2(size - 1, size / 2);
+        }
+        else
+        {
+            normalDir = Vector2.right;
+            planeCenter = new Vector2(0, size / 2);
+        }
+        Vector2 overshootDir = Vector2.Perpendicular(normalDir).normalized;
+        if (Vector2.Dot(overshootDir, dir) < 0) overshootDir *= -1;
+        for (int i = 0; i < 2 * size; i++)
+        {
+            startPoints[i] = CellularVector.Round(planeCenter + (i - size / 2) * overshootDir);
+        }
+        return normalDir;
+    }
 }
 
 ////////// abstract cell class, cell categories classes and cell sub-categories classes
@@ -82,8 +163,6 @@ public abstract class Fluid : DynamicCell
         Vector2 down = momentum.normalized;
         Vector2 right = Vector2.Perpendicular(down).normalized;
 
-        UpdateCompression(start, -down);
-
         ca.grid[x, y] = null;
 
         // flow into neighboring cells
@@ -95,14 +174,31 @@ public abstract class Fluid : DynamicCell
         if (volume <= 0) return;
         FlowUp(start, -down);
 
-        // keep the remaining volume in the current cell
-        if (volume > 0) ca.grid[x, y] = this;
+        // keep the remaining volume in the current cell, otherwise update compression for cells below
+        if (volume > 0)
+        {
+            ca.grid[x, y] = this;
+        }
+        else
+        {
+            Vector2Int downCell = CellularVector.Round(start + down);
+            ((Fluid)ca.grid[downCell.x, downCell.y]).UpdateCompression(downCell);
+        }
     }
 
-    public void UpdateCompression(Vector2Int p, Vector2 up)
+    public void UpdateCompression(Vector2Int p)
     {
-        Vector2Int upCell = CellularVector.Round(p + up);
+        Vector2Int upCell = CellularVector.Round(p + ca.upPath[0]);
         if (ca.GetCellType(upCell) == type) maxVolume = ((Fluid)ca.grid[upCell.x, upCell.y]).maxVolume + compression;
+
+        for (int i = 0; i < ca.downPath.Count; i++)
+        {
+            Vector2Int downCell = ca.downPath[i] + p;
+            if (ca.GetCellType(downCell) == type)
+                ((Fluid)ca.grid[downCell.x, downCell.y]).maxVolume = maxVolume + (i + 1) * compression;
+            else
+                return;
+        }
     }
 
     public void FlowDown(Vector2Int start)
@@ -243,6 +339,7 @@ public abstract class Fluid : DynamicCell
         newCell.hasBeenUpdated = true;
         newCell.momentum = momentum;
         ca.grid[p.x, p.y] = newCell;
+        newCell.UpdateCompression(p);
         return transfer;
     }
 
@@ -290,10 +387,16 @@ public class Water : Fluid
 
 public class CellularAutomata : MonoBehaviour
 {
-    public int sizeX, sizeY, scale = 1, fps = 30;
+    public int size, scale = 1, fps = 30, maxPathSize = 20;
     public Cell[,] grid;
-    public Vector2 gravity;
-    //public Dictionary<Vector2, float> gravitySources = new Dictionary<Vector2, float>();
+    public Vector2 gravity; // relative to the local grid
+
+    public List<Vector2Int> upPath;
+    public List<Vector2Int> downPath;
+    public List<Vector2Int> rightPath;
+    public List<Vector2Int> leftPath;
+
+    public TraversingLines traversingLines;
 
     public GameObject cellPrefab;
     private Image[,] cellsUI;
@@ -302,25 +405,40 @@ public class CellularAutomata : MonoBehaviour
     private void Start()
     {
         transform.localScale = new Vector3(scale, scale, scale);
-        grid = new Cell[sizeX, sizeY];
-        cellsUI = new Image[sizeX, sizeY];
-        for (int x = 0; x < sizeX; x++)
+        grid = new Cell[size, size];
+        cellsUI = new Image[size, size];
+        for (int x = 0; x < size; x++)
         {
-            for (int y = 0; y < sizeY; y++)
+            for (int y = 0; y < size; y++)
             {
                 GameObject cell = Instantiate(cellPrefab, transform);
-                cell.transform.localPosition = new Vector3(x - sizeX/2, y - sizeY/2, 0);
+                cell.transform.localPosition = new Vector3(x - size/2, y - size/2, 0);
                 cellsUI[x, y] = cell.GetComponent<Image>();
             }
         }
+
+        upPath = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(-gravity.normalized * maxPathSize));
+        downPath = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(gravity.normalized * maxPathSize));
+        rightPath = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(Vector2.Perpendicular(gravity).normalized * maxPathSize));
+        leftPath = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(-Vector2.Perpendicular(gravity).normalized * maxPathSize));
+        upPath.RemoveAt(0);
+        downPath.RemoveAt(0);
+        rightPath.RemoveAt(0);
+        leftPath.RemoveAt(0);
+
+        traversingLines = new TraversingLines(size);
     }
 
     // Update is called once per frame
     private void FixedUpdate()
     {
-        int[] shuffledIndexes = new int[sizeX];
-        for (int i = 0; i < sizeX; i++) shuffledIndexes[i] = i;
-        for (int i = sizeX; i > 1; i--)
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+                if (grid[x, y] != null) grid[x, y].hasBeenUpdated = false;
+
+        /*int[] shuffledIndexes = new int[size];
+        for (int i = 0; i < size; i++) shuffledIndexes[i] = i;
+        for (int i = size; i > 1; i--)
         {
             int p = Random.Range(0, i);
             int tmp = shuffledIndexes[i-1];
@@ -328,21 +446,30 @@ public class CellularAutomata : MonoBehaviour
             shuffledIndexes[p] = tmp;
         }
 
-        for (int y = 0; y < sizeY; y++)
-            for (int x = 0; x < sizeX; x++)
-                if (grid[x, y] != null) grid[x, y].hasBeenUpdated = false;
-        for (int y = 0; y < sizeY; y++)
+        for (int y = 0; y < size; y++)
             foreach (int x in shuffledIndexes)
-                if (grid[x, y] != null) grid[x, y].UpdateCell(x, y);
+                if (grid[x, y] != null) grid[x, y].UpdateCell(x, y);*/
+
+        traversingLines.ShuffleIndexes();
+        for (int i = 0; i < 2 * size; i++)
+        {
+            foreach (int j in traversingLines.shuffledIndexes)
+            {
+                Vector2Int point = traversingLines.horizontalStartPoints[i] + traversingLines.horizontal[j];
+                print(point);
+                if (!InRange(point)) continue;
+                if (grid[point.x, point.y] != null) grid[point.x, point.y].UpdateCell(point.x, point.y);
+            }
+        }
 
         RenderGrid();
     }
 
     private void RenderGrid()
     {
-        for (int x = 0; x < sizeX; x++)
+        for (int x = 0; x < size; x++)
         {
-            for (int y = 0; y < sizeY; y++)
+            for (int y = 0; y < size; y++)
             {
                 if (grid[x, y] == null)
                     cellsUI[x, y].color = Color.black;
@@ -361,7 +488,7 @@ public class CellularAutomata : MonoBehaviour
 
     public bool InRange(int x, int y)
     {
-        return x >= 0 && x < sizeX && y >= 0 && y < sizeY;
+        return x >= 0 && x < size && y >= 0 && y < size;
     }
 
     public CellType GetCellType(Vector2Int p)
