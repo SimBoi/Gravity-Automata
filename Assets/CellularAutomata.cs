@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http.Headers;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEditor;
@@ -60,6 +61,10 @@ public class TraversingLines
         if (Vector2.Dot(downNormalDir, horizontalDir) < 0) horizontalDir *= -1;
         horizontal = CellularVector.Bresenham(Vector2Int.zero, Vector2Int.FloorToInt(horizontalDir * size * 1.5f)).GetRange(0, size).ToArray();
         GenerateStartPoints(size, horizontalDir, ref horizontalStartPoints);
+        if (downDir.x == downDir.y)
+        {
+            System.Array.Reverse(horizontalStartPoints);
+        }
     }
 
     private static Vector2 GenerateStartPoints(int size, Vector2 dir, ref Vector2Int[] startPoints) // returns normal to the start points plane
@@ -87,7 +92,7 @@ public class TraversingLines
             planeCenter = new Vector2(0, size / 2);
         }
         Vector2 overshootDir = Vector2.Perpendicular(normalDir).normalized;
-        if (Vector2.Dot(overshootDir, dir) < 0) overshootDir *= -1;
+        if (Vector2.Dot(overshootDir, dir) > 0) overshootDir *= -1;
         for (int i = 0; i < 2 * size; i++)
         {
             startPoints[i] = CellularVector.Round(planeCenter + (i - size / 2) * overshootDir);
@@ -449,20 +454,6 @@ public class CellularAutomata : MonoBehaviour
         for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
                 if (grid[x, y] != null) grid[x, y].hasBeenUpdated = false;
-
-        /*int[] shuffledIndexes = new int[size];
-        for (int i = 0; i < size; i++) shuffledIndexes[i] = i;
-        for (int i = size; i > 1; i--)
-        {
-            int p = Random.Range(0, i);
-            int tmp = shuffledIndexes[i-1];
-            shuffledIndexes[i-1] = shuffledIndexes[p];
-            shuffledIndexes[p] = tmp;
-        }
-
-        for (int y = 0; y < size; y++)
-            foreach (int x in shuffledIndexes)
-                if (grid[x, y] != null) grid[x, y].UpdateCell(x, y);*/
 
         traversingLines.ShuffleIndexes();
         for (int i = 0; i < 2 * size; i++)
