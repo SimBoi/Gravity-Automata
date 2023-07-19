@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http.Headers;
+using Unity.Collections.LowLevel.Unsafe;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,7 +20,8 @@ public class TraversingLines
 
     public Vector2Int[] verticalStartPoints;
     public Vector2Int[] horizontalStartPoints;
-    public List<Vector2Int> down;
+    public Vector2 downDir;
+    public Vector2Int[] down;
     public Vector2Int[] horizontal;
 
     public int[] shuffledIndexes;
@@ -45,17 +47,18 @@ public class TraversingLines
         }
     }
 
-    public void GenerateLines(List<Vector2Int> down)
+    public void GenerateLines(Vector2 downDir)
     {
         // vertical traversing
-        this.down = down;
-        Vector2 downDir = ((Vector2)down[1] - (Vector2)down[0]).normalized;
+        downDir = downDir.normalized;
+        this.downDir = downDir;
+        this.down = CellularVector.Bresenham(Vector2Int.zero, Vector2Int.FloorToInt(downDir * size * 1.5f)).GetRange(0, size).ToArray();
         Vector2 downNormalDir = GenerateStartPoints(size, downDir, ref verticalStartPoints);
 
         // horizontal traversing
         Vector2 horizontalDir = Vector2.Perpendicular(downDir).normalized;
         if (Vector2.Dot(downNormalDir, horizontalDir) < 0) horizontalDir *= -1;
-        horizontal = CellularVector.Bresenham(Vector2Int.zero, Vector2Int.FloorToInt(horizontalDir * size * 2)).GetRange(0, size).ToArray();
+        horizontal = CellularVector.Bresenham(Vector2Int.zero, Vector2Int.FloorToInt(horizontalDir * size * 1.5f)).GetRange(0, size).ToArray();
         GenerateStartPoints(size, horizontalDir, ref horizontalStartPoints);
     }
 
@@ -417,6 +420,13 @@ public class CellularAutomata : MonoBehaviour
             }
         }
 
+        traversingLines = new TraversingLines(size);
+        UpdateGravity();
+    }
+    public bool needregenerate = false;
+
+    private void UpdateGravity()
+    {
         upPath = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(-gravity.normalized * maxPathSize));
         downPath = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(gravity.normalized * maxPathSize));
         rightPath = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(Vector2.Perpendicular(gravity).normalized * maxPathSize));
@@ -425,13 +435,17 @@ public class CellularAutomata : MonoBehaviour
         downPath.RemoveAt(0);
         rightPath.RemoveAt(0);
         leftPath.RemoveAt(0);
-
-        traversingLines = new TraversingLines(size);
+        traversingLines.GenerateLines(gravity);
     }
 
     // Update is called once per frame
     private void FixedUpdate()
     {
+        if (needregenerate)
+        {
+            needregenerate = false;
+            UpdateGravity();
+        }
         for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
                 if (grid[x, y] != null) grid[x, y].hasBeenUpdated = false;
@@ -456,7 +470,6 @@ public class CellularAutomata : MonoBehaviour
             foreach (int j in traversingLines.shuffledIndexes)
             {
                 Vector2Int point = traversingLines.horizontalStartPoints[i] + traversingLines.horizontal[j];
-                print(point);
                 if (!InRange(point)) continue;
                 if (grid[point.x, point.y] != null) grid[point.x, point.y].UpdateCell(point.x, point.y);
             }

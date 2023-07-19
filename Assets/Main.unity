@@ -402,12 +402,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a508a15c99e180c43b0ddf881a445941, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sizeX: 100
-  sizeY: 100
+  size: 100
   scale: 5
   fps: 30
+  maxPathSize: 20
   gravity: {x: 0, y: -10}
+  upPath: []
+  downPath: []
+  rightPath: []
+  leftPath: []
   cellPrefab: {fileID: 4213994167793640817, guid: 3d2dd84c2918cd14cb94461b25fc87f0, type: 3}
+  needregenerate: 0
 --- !u!4 &2139647474
 Transform:
   m_ObjectHideFlags: 0
