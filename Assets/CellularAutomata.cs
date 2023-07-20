@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.PlayerLoop;
 using UnityEngine.UI;
 
 public enum CellType
@@ -23,7 +24,9 @@ public class TraversingLines
     public Vector2Int[] horizontalStartPoints;
     public Vector2 downDir;
     public Vector2Int[] down;
-    public Vector2Int[] horizontal;
+    public Vector2Int[] right;
+    public Hashtable pointIndexOnDownPath = new Hashtable();
+    public Hashtable pointIndexOnRightPath = new Hashtable();
 
     public int[] shuffledIndexes;
 
@@ -32,7 +35,8 @@ public class TraversingLines
         this.size = size;
         verticalStartPoints = new Vector2Int[2 * size];
         horizontalStartPoints = new Vector2Int[2 * size];
-        horizontal = new Vector2Int[size];
+        down = new Vector2Int[size];
+        right = new Vector2Int[size];
         shuffledIndexes = new int[size];
     }
 
@@ -53,17 +57,38 @@ public class TraversingLines
         // vertical traversing
         downDir = downDir.normalized;
         this.downDir = downDir;
-        this.down = CellularVector.Bresenham(Vector2Int.zero, Vector2Int.FloorToInt(downDir * size * 1.5f)).GetRange(0, size).ToArray();
+        down = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(downDir * size * 1.5f)).GetRange(0, size).ToArray();
+
         Vector2 downNormalDir = GenerateStartPoints(size, downDir, ref verticalStartPoints);
 
         // horizontal traversing
-        Vector2 horizontalDir = Vector2.Perpendicular(downDir).normalized;
-        if (Vector2.Dot(downNormalDir, horizontalDir) < 0) horizontalDir *= -1;
-        horizontal = CellularVector.Bresenham(Vector2Int.zero, Vector2Int.FloorToInt(horizontalDir * size * 1.5f)).GetRange(0, size).ToArray();
-        GenerateStartPoints(size, horizontalDir, ref horizontalStartPoints);
+        Vector2 rightDir = Vector2.Perpendicular(downDir).normalized;
+        if (Vector2.Dot(downNormalDir, rightDir) < 0) rightDir *= -1;
+        right = CellularVector.Bresenham(Vector2Int.zero, Vector2Int.FloorToInt(rightDir * size * 1.5f)).GetRange(0, size).ToArray();
+        GenerateStartPoints(size, rightDir, ref horizontalStartPoints);
         if (downDir.x == downDir.y)
         {
             System.Array.Reverse(horizontalStartPoints);
+        }
+
+        // fill point index on path hashtables
+        pointIndexOnDownPath.Clear();
+        for (int i = 0; i < 2 * size; i++)
+        {
+            for (int j = 0; j < size; j++)
+            {
+                Vector2Int point = verticalStartPoints[i] + down[j];
+                if (InRange(point)) pointIndexOnDownPath[point] = j;
+            }
+        }
+        pointIndexOnRightPath.Clear();
+        for (int i = 0; i < 2 * size; i++)
+        {
+            for (int j = 0; j < size; j++)
+            {
+                Vector2Int point = horizontalStartPoints[i] + right[j];
+                if (InRange(point)) pointIndexOnRightPath[point] = j;
+            }
         }
     }
 
@@ -98,6 +123,28 @@ public class TraversingLines
             startPoints[i] = CellularVector.Round(planeCenter + (i - size / 2) * overshootDir);
         }
         return normalDir;
+    }
+
+    public Vector2Int GetNeightborPoint(Vector2Int point, int verticalDiff, int horizontalDiff)
+    {
+        verticalDiff *= -1;
+        int downIndex = (int)pointIndexOnDownPath[point];
+        int rightIndex = (int)pointIndexOnRightPath[point];
+        int downTargetIndex = Mathf.Clamp(downIndex - verticalDiff, 0, size - 1);
+        int rightTargetIndex = Mathf.Clamp(rightIndex - horizontalDiff, 0, size - 1);
+        Vector2Int verticalVec = down[downTargetIndex] - down[downIndex];
+        Vector2Int horizontalVec = right[rightTargetIndex] - right[rightIndex];
+        return point + verticalVec + horizontalVec;
+    }
+
+    public bool InRange(Vector2Int coords)
+    {
+        return InRange(coords.x, coords.y);
+    }
+
+    public bool InRange(int x, int y)
+    {
+        return x >= 0 && x < size && y >= 0 && y < size;
     }
 }
 
@@ -460,7 +507,7 @@ public class CellularAutomata : MonoBehaviour
         {
             foreach (int j in traversingLines.shuffledIndexes)
             {
-                Vector2Int point = traversingLines.horizontalStartPoints[i] + traversingLines.horizontal[j];
+                Vector2Int point = traversingLines.horizontalStartPoints[i] + traversingLines.right[j];
                 if (!InRange(point)) continue;
                 if (grid[point.x, point.y] != null) grid[point.x, point.y].UpdateCell(point.x, point.y);
             }
@@ -487,12 +534,12 @@ public class CellularAutomata : MonoBehaviour
 
     public bool InRange(Vector2Int coords)
     {
-        return InRange(coords.x, coords.y);
+        return traversingLines.InRange(coords);
     }
 
     public bool InRange(int x, int y)
     {
-        return x >= 0 && x < size && y >= 0 && y < size;
+        return traversingLines.InRange(x, y);
     }
 
     public CellType GetCellType(Vector2Int p)

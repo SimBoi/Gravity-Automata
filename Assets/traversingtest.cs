@@ -68,7 +68,7 @@ public class traversingtest : MonoBehaviour
         {
             foreach (int j in tl.shuffledIndexes)
             {
-                Vector2Int point = tl.horizontalStartPoints[i] + tl.horizontal[j];
+                Vector2Int point = tl.horizontalStartPoints[i] + tl.right[j];
                 if (!InRange(point)) continue;
                 points.Add(point);
             }
