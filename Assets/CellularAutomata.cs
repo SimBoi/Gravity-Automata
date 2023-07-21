@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net.Http.Headers;
@@ -127,14 +128,42 @@ public class TraversingLines
 
     public Vector2Int GetNeightborPoint(Vector2Int point, int verticalDiff, int horizontalDiff)
     {
-        verticalDiff *= -1;
         int downIndex = (int)pointIndexOnDownPath[point];
         int rightIndex = (int)pointIndexOnRightPath[point];
         int downTargetIndex = Mathf.Clamp(downIndex - verticalDiff, 0, size - 1);
-        int rightTargetIndex = Mathf.Clamp(rightIndex - horizontalDiff, 0, size - 1);
+        int rightTargetIndex = Mathf.Clamp(rightIndex + horizontalDiff, 0, size - 1);
         Vector2Int verticalVec = down[downTargetIndex] - down[downIndex];
         Vector2Int horizontalVec = right[rightTargetIndex] - right[rightIndex];
         return point + verticalVec + horizontalVec;
+    }
+
+    public List<Vector2Int> GetVerticalPath(Vector2Int start, int maxLength)
+    {
+        List<Vector2Int> path = new List<Vector2Int>();
+        int startIndex = (int)pointIndexOnDownPath[start];
+        if (maxLength > 0) // up
+        {
+            int length = Mathf.Min(maxLength, startIndex + 1);
+            for (int i = 0; i < length; i++)
+            {
+                Vector2Int diff = down[startIndex - i] - down[startIndex];
+                Vector2Int point = start + diff;
+                if (!InRange(point)) break;
+                path.Add(point);
+            }
+        }
+        else // down
+        {
+            int length = Mathf.Min(-maxLength, size - startIndex);
+            for (int i = 0; i < length; i++)
+            {
+                Vector2Int diff = down[startIndex + i] - down[startIndex];
+                Vector2Int point = start + diff;
+                if (!InRange(point)) break;
+                path.Add(point);
+            }
+        }
+        return path;
     }
 
     public bool InRange(Vector2Int coords)
@@ -243,16 +272,16 @@ public abstract class Fluid : DynamicCell
 
     public void UpdateCompression(Vector2Int p)
     {
-        Vector2Int upCell = CellularVector.Round(p + ca.upPath[0]);
-        if (ca.GetCellType(upCell) == type) maxVolume = ((Fluid)ca.grid[upCell.x, upCell.y]).maxVolume + compression;
+        Vector2Int upCell = ca.traversingLines.GetNeightborPoint(p, 1, 0);
+        if (p != upCell && ca.GetCellType(upCell) == type) maxVolume = ((Fluid)ca.grid[upCell.x, upCell.y]).maxVolume + compression;
+        else maxVolume = defaultMaxVolume;
 
-        for (int i = 0; i < ca.downPath.Count; i++)
+        List<Vector2Int> downPath = ca.traversingLines.GetVerticalPath(p, -ca.size);
+        downPath.RemoveAt(0);
+        for (int i = 0; i < downPath.Count; i++)
         {
-            Vector2Int downCell = ca.downPath[i] + p;
-            if (ca.GetCellType(downCell) == type)
-                ((Fluid)ca.grid[downCell.x, downCell.y]).maxVolume = maxVolume + (i + 1) * compression;
-            else
-                return;
+            if (ca.GetCellType(downPath[i]) == type) ((Fluid)ca.grid[downPath[i].x, downPath[i].y]).maxVolume = maxVolume + (i + 1) * compression;
+            else return;
         }
     }
 
@@ -446,11 +475,6 @@ public class CellularAutomata : MonoBehaviour
     public Cell[,] grid;
     public Vector2 gravity; // relative to the local grid
 
-    public List<Vector2Int> upPath;
-    public List<Vector2Int> downPath;
-    public List<Vector2Int> rightPath;
-    public List<Vector2Int> leftPath;
-
     public TraversingLines traversingLines;
 
     public GameObject cellPrefab;
@@ -479,14 +503,6 @@ public class CellularAutomata : MonoBehaviour
 
     private void UpdateGravity()
     {
-        upPath = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(-gravity.normalized * maxPathSize));
-        downPath = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(gravity.normalized * maxPathSize));
-        rightPath = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(Vector2.Perpendicular(gravity).normalized * maxPathSize));
-        leftPath = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(-Vector2.Perpendicular(gravity).normalized * maxPathSize));
-        upPath.RemoveAt(0);
-        downPath.RemoveAt(0);
-        rightPath.RemoveAt(0);
-        leftPath.RemoveAt(0);
         traversingLines.GenerateLines(gravity);
     }
 
@@ -523,11 +539,11 @@ public class CellularAutomata : MonoBehaviour
             for (int y = 0; y < size; y++)
             {
                 if (grid[x, y] == null)
-                    cellsUI[x, y].color = Color.black;
+                    cellsUI[x, y].color = UnityEngine.Color.black;
                 else if (grid[x, y].type == CellType.Stone)
-                    cellsUI[x, y].color = Color.gray;
+                    cellsUI[x, y].color = UnityEngine.Color.gray;
                 else if (grid[x, y].type == CellType.Water)
-                    cellsUI[x, y].color = Color.blue;
+                    cellsUI[x, y].color = UnityEngine.Color.blue;
             }
         }
     }
