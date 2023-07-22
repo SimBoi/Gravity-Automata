@@ -126,12 +126,15 @@ public class TraversingLines
         return normalDir;
     }
 
+    // returns the same point if the target point is out of bounds
     public Vector2Int GetNeightborPoint(Vector2Int point, int verticalDiff, int horizontalDiff)
     {
         int downIndex = (int)pointIndexOnDownPath[point];
         int rightIndex = (int)pointIndexOnRightPath[point];
-        int downTargetIndex = Mathf.Clamp(downIndex - verticalDiff, 0, size - 1);
-        int rightTargetIndex = Mathf.Clamp(rightIndex + horizontalDiff, 0, size - 1);
+        int downTargetIndex = downIndex - verticalDiff;
+        int rightTargetIndex = rightIndex + horizontalDiff;
+        if (downTargetIndex < 0 || downTargetIndex >= size) return point;
+        if (rightTargetIndex < 0 || rightTargetIndex >= size) return point;
         Vector2Int verticalVec = down[downTargetIndex] - down[downIndex];
         Vector2Int horizontalVec = right[rightTargetIndex] - right[rightIndex];
         return point + verticalVec + horizontalVec;
@@ -246,19 +249,14 @@ public abstract class Fluid : DynamicCell
         //Vector2 down = momentum.normalized;
         //Vector2 right = Vector2.Perpendicular(down).normalized;
 
-        ca.grid[p.x, p.y] = null;
-
         // flow into neighboring cells
         FlowDown(p);
-        if (volume <= 0) return;
-        FlowDiagonally(p);
-        if (volume <= 0) return;
-        FlowSideways(p);
-        if (volume <= 0) return;
-        FlowUp(p);
+        if (volume > 0) FlowDiagonally(p);
+        if (volume > 0) FlowSideways(p);
+        if (volume > 0) FlowUp(p);
 
-        // keep the remaining volume in the current cell
-        if (volume > 0) ca.grid[p.x, p.y] = this;
+        // remove empty cell
+        if (volume <= 0) ca.grid[p.x, p.y] = null;
     }
 
     public void FlowDown(Vector2Int start)
@@ -386,11 +384,7 @@ public abstract class Fluid : DynamicCell
         if (upCell != start && ca.InRange(upCell))
         {
             CellType upCellType = ca.GetCellType(upCell);
-            if (upCellType == CellType.Empty)
-            {
-                FlowToEmptyCell(upCell, volume - maxVolume);
-                maxVolume += compression;
-            }
+            if (upCellType == CellType.Empty) FlowToEmptyCell(upCell, volume - maxVolume);
             else if (upCellType == type) FlowToFluidCell(upCell, volume - maxVolume, true);
         }
     }
@@ -503,7 +497,7 @@ public class CellularAutomata : MonoBehaviour
             float nextVolume = Fluid.defaultMaxVolume;
             for (int j = 0; j < size; j++)
             {
-                Vector2Int point = traversingLines.horizontalStartPoints[i] + traversingLines.right[j];
+                Vector2Int point = traversingLines.verticalStartPoints[i] + traversingLines.down[j];
                 if (GetCellType(point) != CellType.Water)
                 {
                     nextVolume = Fluid.defaultMaxVolume;
