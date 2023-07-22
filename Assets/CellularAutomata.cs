@@ -225,9 +225,9 @@ public abstract class Fluid : DynamicCell
 {
     public float volume;
     public float maxVolume;
-    public const float defaultMaxVolume = 1;
-    public const float compression = 0.15f;
-    public const float minFlow = 0.1f;
+    public static float defaultMaxVolume = 1;
+    public static float compression = 0.15f;
+    public static float minFlow = 0.1f;
 
     public Fluid(CellularAutomata ca, float volume = 1) : base(ca)
     {
@@ -258,31 +258,8 @@ public abstract class Fluid : DynamicCell
         if (volume <= 0) return;
         FlowUp(start, -down);
 
-        // keep the remaining volume in the current cell, otherwise update compression for cells below
-        if (volume > 0)
-        {
-            ca.grid[x, y] = this;
-        }
-        else
-        {
-            Vector2Int downCell = CellularVector.Round(start + down);
-            ((Fluid)ca.grid[downCell.x, downCell.y]).UpdateCompression(downCell);
-        }
-    }
-
-    public void UpdateCompression(Vector2Int p)
-    {
-        Vector2Int upCell = ca.traversingLines.GetNeightborPoint(p, 1, 0);
-        if (p != upCell && ca.GetCellType(upCell) == type) maxVolume = ((Fluid)ca.grid[upCell.x, upCell.y]).maxVolume + compression;
-        else maxVolume = defaultMaxVolume;
-
-        List<Vector2Int> downPath = ca.traversingLines.GetVerticalPath(p, -ca.size);
-        downPath.RemoveAt(0);
-        for (int i = 0; i < downPath.Count; i++)
-        {
-            if (ca.GetCellType(downPath[i]) == type) ((Fluid)ca.grid[downPath[i].x, downPath[i].y]).maxVolume = maxVolume + (i + 1) * compression;
-            else return;
-        }
+        // keep the remaining volume in the current cell
+        if (volume > 0) ca.grid[x, y] = this;
     }
 
     public void FlowDown(Vector2Int start)
@@ -423,7 +400,6 @@ public abstract class Fluid : DynamicCell
         newCell.hasBeenUpdated = true;
         newCell.momentum = momentum;
         ca.grid[p.x, p.y] = newCell;
-        newCell.UpdateCompression(p);
         return transfer;
     }
 
@@ -518,6 +494,24 @@ public class CellularAutomata : MonoBehaviour
             for (int x = 0; x < size; x++)
                 if (grid[x, y] != null) grid[x, y].hasBeenUpdated = false;
 
+        // update compression
+        for (int i = 0; i < 2 * size; i++)
+        {
+            float nextVolume = Fluid.defaultMaxVolume;
+            for (int j = 0; j < size; j++)
+            {
+                Vector2Int point = traversingLines.horizontalStartPoints[i] + traversingLines.right[j];
+                if (GetCellType(point) != CellType.Water)
+                {
+                    nextVolume = Fluid.defaultMaxVolume;
+                    continue;
+                }
+                ((Fluid)grid[point.x, point.y]).maxVolume = nextVolume;
+                nextVolume += Fluid.compression;
+            }
+        }
+
+        // simulate
         traversingLines.ShuffleIndexes();
         for (int i = 0; i < 2 * size; i++)
         {

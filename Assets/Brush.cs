@@ -52,11 +52,7 @@ public class Brush : MonoBehaviour
                     if (fillType == currentType) continue;
 
                     if (fillType == CellType.Stone) ca.grid[x, y] = new Stone(ca);
-                    if (fillType == CellType.Water)
-                    {
-                        ca.grid[x, y] = new Water(ca);
-                        ((Fluid)ca.grid[x, y]).UpdateCompression(new Vector2Int(x, y));
-                    }
+                    if (fillType == CellType.Water) ca.grid[x, y] = new Water(ca);
                     if (fillType == CellType.Empty) ca.grid[x, y] = null;
                 }
             }
