@@ -183,7 +183,7 @@ public abstract class Cell
 {
     public CellularAutomata ca;
     public CellType type;
-    public bool hasBeenUpdated;
+    public bool hasBeenSimulated;
 
     public Cell(CellularAutomata ca)
     {
@@ -192,9 +192,9 @@ public abstract class Cell
 
     public abstract Cell NewCell(object[] argv);
 
-    public virtual void UpdateCell(int x, int y)
+    public virtual void SimulateCell(Vector2Int p)
     {
-        hasBeenUpdated = true;
+        hasBeenSimulated = true;
     }
 }
 
@@ -205,19 +205,19 @@ public abstract class StaticCell : Cell
 
 public abstract class DynamicCell : Cell
 {
-    public Vector2 momentum;
-    public Vector2 deviation;
+    public float momentum;
+    //public Vector2 deviation;
 
     public DynamicCell(CellularAutomata ca) : base(ca)
     {
-        momentum = Vector2.zero;
-        deviation = Vector2.zero;
+        momentum = 0;
+        //deviation = Vector2.zero;
     }
 
     public void ApplyForces()
     {
-        momentum += ca.gravity * (1.0f / ca.fps);
-        if (momentum.magnitude < 1) momentum.Normalize();
+        momentum += ca.gravity.magnitude * (1.0f / ca.fps);
+        if (momentum < 1) momentum = 1;
     }
 }
 
@@ -235,41 +235,42 @@ public abstract class Fluid : DynamicCell
         maxVolume = defaultMaxVolume;
     }
 
-    public override void UpdateCell(int x, int y)
+    public override void SimulateCell(Vector2Int p)
     {
-        if (hasBeenUpdated) return;
-        hasBeenUpdated = true;
+        if (hasBeenSimulated) return;
+        hasBeenSimulated = true;
 
         ApplyForces();
 
-        // calculate start point and direction vectors
-        Vector2Int start = new Vector2Int(x, y);
-        Vector2 down = momentum.normalized;
-        Vector2 right = Vector2.Perpendicular(down).normalized;
+        // calculate direction vectors
+        //Vector2 down = momentum.normalized;
+        //Vector2 right = Vector2.Perpendicular(down).normalized;
 
-        ca.grid[x, y] = null;
+        ca.grid[p.x, p.y] = null;
 
         // flow into neighboring cells
-        FlowDown(start);
+        FlowDown(p);
         if (volume <= 0) return;
-        FlowDiagonally(start, down, right);
+        FlowDiagonally(p);
         if (volume <= 0) return;
-        FlowSideways(start, -down, right);
+        FlowSideways(p);
         if (volume <= 0) return;
-        FlowUp(start, -down);
+        FlowUp(p);
 
         // keep the remaining volume in the current cell
-        if (volume > 0) ca.grid[x, y] = this;
+        if (volume > 0) ca.grid[p.x, p.y] = this;
     }
 
     public void FlowDown(Vector2Int start)
     {
         // get the fall path using the bresenham algorithm on the current momentum and deviation
-        Vector2Int end = CellularVector.Round(start + deviation + momentum);
-        List<Vector2Int> fallPath = start != end ? CellularVector.Bresenham(start, end) : new List<Vector2Int>() { start };
+        //Vector2Int end = CellularVector.Round(start + deviation + momentum);
+        //List<Vector2Int> fallPath = start != end ? CellularVector.Bresenham(start, end) : new List<Vector2Int>() { start };
+        List<Vector2Int> fallPath = ca.traversingLines.GetVerticalPath(start, -(int)momentum - 1);
+        fallPath.RemoveAt(0);
 
         // check the farthest distance the cell can fall down(momentum direction) to using the bresenham fall line
-        int farthestPoint = 0; // the farthest point
+        int farthestPoint = -1; // the farthest point
         for (int i = 0; i < fallPath.Count; i++)
         {
             Vector2Int p = fallPath[i];
@@ -278,7 +279,7 @@ public abstract class Fluid : DynamicCell
         }
 
         // reset the momentum and deviation if the cell hit the ground, otherwise update the deviation vector
-        if (farthestPoint == fallPath.Count - 1)
+        /*if (farthestPoint == fallPath.Count - 1)
         {
             deviation = start + deviation + momentum - end;
         }
@@ -286,10 +287,11 @@ public abstract class Fluid : DynamicCell
         {
             momentum = Vector2.zero;
             deviation = Vector2.zero;
-        }
+        }*/
+        if (fallPath.Count == 0 || farthestPoint != fallPath.Count - 1) momentum = 0;
 
         // flow down to the cells on the fallPath starting from the farthest fall point
-        for (int i = farthestPoint; i > 0; i--)
+        for (int i = farthestPoint; i >= 0; i--)
         {
             Vector2Int p = fallPath[i];
             if (ca.grid[p.x, p.y] == null) FlowToEmptyCell(p, volume);
@@ -298,18 +300,18 @@ public abstract class Fluid : DynamicCell
         }
     }
 
-    public void FlowDiagonally(Vector2Int start, Vector2 down, Vector2 right)
+    public void FlowDiagonally(Vector2Int start)
     {
         List<Vector2Int> flowTo = new List<Vector2Int>
         {
-            CellularVector.Round(start + down + right),
-            CellularVector.Round(start + down - right)
+            ca.traversingLines.GetNeightborPoint(start, -1, 1),
+            ca.traversingLines.GetNeightborPoint(start, -1, -1)
         };
 
         for (int i = 0; i < flowTo.Count; i++)
         {
             CellType flowToType = ca.GetCellType(flowTo[i]);
-            if (!ca.InRange(flowTo[i]) || (flowToType != CellType.Empty && flowToType != type))
+            if (flowTo[i] == start || !ca.InRange(flowTo[i]) || (flowToType != CellType.Empty && flowToType != type))
             {
                 flowTo.RemoveAt(i);
                 i--;
@@ -334,14 +336,14 @@ public abstract class Fluid : DynamicCell
         }
     }
 
-    public void FlowSideways(Vector2Int start, Vector2 up, Vector2 right)
+    public void FlowSideways(Vector2Int start)
     {
         if (volume < minFlow) return;
 
         List<Vector2Int> flowTo = new List<Vector2Int>
         {
-            CellularVector.Round(start + right),
-            CellularVector.Round(start - right)
+            ca.traversingLines.GetNeightborPoint(start, 0, 1),
+            ca.traversingLines.GetNeightborPoint(start, 0, -1)
         };
 
         float totalVolume = volume;
@@ -349,7 +351,8 @@ public abstract class Fluid : DynamicCell
         for (int i = 0; i < flowTo.Count; i++)
         {
             CellType flowToType = ca.GetCellType(flowTo[i]);
-            if (!ca.InRange(flowTo[i]) ||
+            if (flowTo[i] == start ||
+                !ca.InRange(flowTo[i]) ||
                 (flowToType != CellType.Empty && flowToType != type) ||
                 (flowToType == type && ((Fluid)ca.grid[flowTo[i].x, flowTo[i].y]).volume >= volume))
             {
@@ -374,13 +377,13 @@ public abstract class Fluid : DynamicCell
         volume = split;
     }
 
-    public void FlowUp(Vector2Int start, Vector2 up)
+    public void FlowUp(Vector2Int start)
     {
         if (volume <= maxVolume) return;
 
-        Vector2Int upCell = CellularVector.Round(start + up);
+        Vector2Int upCell = ca.traversingLines.GetNeightborPoint(start, 1, 0);
 
-        if (ca.InRange(upCell))
+        if (upCell != start && ca.InRange(upCell))
         {
             CellType upCellType = ca.GetCellType(upCell);
             if (upCellType == CellType.Empty)
@@ -397,7 +400,7 @@ public abstract class Fluid : DynamicCell
         float transfer = Mathf.Min(defaultMaxVolume, maxFlow);
         volume -= transfer;
         Fluid newCell = (Fluid)NewCell(new object[] { ca, transfer });
-        newCell.hasBeenUpdated = true;
+        newCell.hasBeenSimulated = true;
         newCell.momentum = momentum;
         ca.grid[p.x, p.y] = newCell;
         return transfer;
@@ -492,7 +495,7 @@ public class CellularAutomata : MonoBehaviour
         }
         for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
-                if (grid[x, y] != null) grid[x, y].hasBeenUpdated = false;
+                if (grid[x, y] != null) grid[x, y].hasBeenSimulated = false;
 
         // update compression
         for (int i = 0; i < 2 * size; i++)
@@ -519,7 +522,7 @@ public class CellularAutomata : MonoBehaviour
             {
                 Vector2Int point = traversingLines.horizontalStartPoints[i] + traversingLines.right[j];
                 if (!InRange(point)) continue;
-                if (grid[point.x, point.y] != null) grid[point.x, point.y].UpdateCell(point.x, point.y);
+                if (grid[point.x, point.y] != null) grid[point.x, point.y].SimulateCell(point);
             }
         }
 
