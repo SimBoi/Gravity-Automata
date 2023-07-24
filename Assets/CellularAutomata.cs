@@ -191,6 +191,7 @@ public abstract class Cell
     public Cell(CellularAutomata ca)
     {
         this.ca = ca;
+        this.hasBeenSimulated = true;
     }
 
     public abstract Cell NewCell(object[] argv);
@@ -252,8 +253,6 @@ public abstract class Fluid : DynamicCell
         // flow into neighboring cells
         FlowDown(p);
         if (volume > 0) FlowDiagonally(p);
-        if (volume > 0) FlowSideways(p);
-        if (volume > 0) FlowUp(p);
 
         // remove empty cell
         if (volume <= 0) ca.grid[p.x, p.y] = null;
@@ -269,10 +268,17 @@ public abstract class Fluid : DynamicCell
 
         // check the farthest distance the cell can fall down(momentum direction) to using the bresenham fall line
         int farthestPoint = -1; // the farthest point
+        bool isFarthestPointFluid = false;
         for (int i = 0; i < fallPath.Count; i++)
         {
             Vector2Int p = fallPath[i];
-            if (ca.InRange(p) && (ca.grid[p.x, p.y] == null || ca.grid[p.x, p.y].type == type)) farthestPoint = i;
+            if (ca.InRange(p))
+            {
+                if (ca.grid[p.x, p.y] == null) isFarthestPointFluid = false;
+                else if (ca.grid[p.x, p.y].type == type) isFarthestPointFluid = true;
+                else break;
+                farthestPoint = i;
+            }
             else break;
         }
 
@@ -286,7 +292,7 @@ public abstract class Fluid : DynamicCell
             momentum = Vector2.zero;
             deviation = Vector2.zero;
         }*/
-        if (fallPath.Count == 0 || farthestPoint != fallPath.Count - 1) momentum = 0;
+        if (fallPath.Count < (int)momentum || isFarthestPointFluid || farthestPoint != fallPath.Count - 1) momentum = 0;
 
         // flow down to the cells on the fallPath starting from the farthest fall point
         for (int i = farthestPoint; i >= 0; i--)
@@ -331,61 +337,6 @@ public abstract class Fluid : DynamicCell
                     i--;
                 }
             }
-        }
-    }
-
-    public void FlowSideways(Vector2Int start)
-    {
-        if (volume < minFlow) return;
-
-        List<Vector2Int> flowTo = new List<Vector2Int>
-        {
-            ca.traversingLines.GetNeightborPoint(start, 0, 1),
-            ca.traversingLines.GetNeightborPoint(start, 0, -1)
-        };
-
-        float totalVolume = volume;
-
-        for (int i = 0; i < flowTo.Count; i++)
-        {
-            CellType flowToType = ca.GetCellType(flowTo[i]);
-            if (flowTo[i] == start ||
-                !ca.InRange(flowTo[i]) ||
-                (flowToType != CellType.Empty && flowToType != type) ||
-                (flowToType == type && ((Fluid)ca.grid[flowTo[i].x, flowTo[i].y]).volume >= volume))
-            {
-                flowTo.RemoveAt(i);
-                i--;
-            }
-            else if (flowToType == type)
-            {
-                totalVolume += ((Fluid)ca.grid[flowTo[i].x, flowTo[i].y]).volume;
-            }
-        }
-
-        if (flowTo.Count == 0) return;
-
-        float split = totalVolume / (flowTo.Count + 1);
-        for (int i = 0; i < flowTo.Count; i++)
-        {
-            Vector2Int p = flowTo[i];
-            if (ca.grid[p.x, p.y] == null) FlowToEmptyCell(p, split);
-            else ((Fluid)ca.grid[p.x, p.y]).volume = split;
-        }
-        volume = split;
-    }
-
-    public void FlowUp(Vector2Int start)
-    {
-        if (volume <= maxVolume) return;
-
-        Vector2Int upCell = ca.traversingLines.GetNeightborPoint(start, 1, 0);
-
-        if (upCell != start && ca.InRange(upCell))
-        {
-            CellType upCellType = ca.GetCellType(upCell);
-            if (upCellType == CellType.Empty) FlowToEmptyCell(upCell, volume - maxVolume);
-            else if (upCellType == type) FlowToFluidCell(upCell, volume - maxVolume, true);
         }
     }
 
@@ -520,6 +471,94 @@ public class CellularAutomata : MonoBehaviour
             }
         }
 
+        // balance water volume on horizontally adjacent cells and flow sideways if possible
+        for (int i = 0; i < 2 * size; i++)
+        {
+            List<int> adjacentCellsIndexes = new List<int>();
+            bool containsWaterCells = false;
+            for (int j = 0; j < size; j++)
+            {
+                Vector2Int point = traversingLines.horizontalStartPoints[i] + traversingLines.right[j];
+
+                // get adjacent cells
+                if (InRange(point) && GetCellType(point) == CellType.Water && ((Fluid)grid[point.x, point.y]).momentum == 0)
+                {
+                    adjacentCellsIndexes.Add(j);
+                    continue;
+                }
+
+                // balance volume for adjacent cells
+                 if (adjacentCellsIndexes.Count > 0)
+                {
+                    // get total volume
+                    float totalVolume = 0;
+                    foreach (int index in adjacentCellsIndexes)
+                    {
+                        Vector2Int p = traversingLines.horizontalStartPoints[i] + traversingLines.right[index];
+                        totalVolume += ((Fluid)grid[p.x, p.y]).volume;
+                    }
+                    float split = totalVolume / adjacentCellsIndexes.Count;
+
+                    // flow to empty cells on the sides
+                    if (split > Fluid.minFlow)
+                    {
+                        int beforeIndex = adjacentCellsIndexes[0] - 1;
+                        int afterIndex = adjacentCellsIndexes[adjacentCellsIndexes.Count - 1] + 1;
+                        if (beforeIndex >= 0)
+                        {
+                            Vector2Int before = traversingLines.horizontalStartPoints[i] + traversingLines.right[beforeIndex];
+                            if (InRange(before) && GetCellType(before) == CellType.Empty)
+                            {
+                                grid[before.x, before.y] = new Water(this);
+                                adjacentCellsIndexes.Add(beforeIndex);
+                            }
+                        }
+                        if (afterIndex < size)
+                        {
+                            Vector2Int after = traversingLines.horizontalStartPoints[i] + traversingLines.right[afterIndex];
+                            if (InRange(after) && GetCellType(after) == CellType.Empty)
+                            {
+                                grid[after.x, after.y] = new Water(this);
+                                adjacentCellsIndexes.Add(afterIndex);
+                            }
+                        }
+                    }
+                    split = totalVolume / adjacentCellsIndexes.Count;
+
+                    // split total volume between all adjacent cells
+                    foreach (int index in adjacentCellsIndexes)
+                    {
+                        Vector2Int p = traversingLines.horizontalStartPoints[i] + traversingLines.right[index];
+                        ((Fluid)grid[p.x, p.y]).volume = split;
+                    }
+                }
+
+                adjacentCellsIndexes.Clear();
+            }
+        }
+
+        // flow up excess volume
+        for (int i = 0; i < 2 * size; i++)
+        {
+            for (int j = 1; j < size; j++)
+            {
+                Vector2Int point = traversingLines.verticalStartPoints[i] + traversingLines.down[j];
+                if (GetCellType(point) == CellType.Water)
+                {
+                    Fluid cell = (Fluid)grid[point.x, point.y];
+                    if (cell.volume <= cell.maxVolume) continue;
+
+                    Vector2Int upCell = traversingLines.verticalStartPoints[i] + traversingLines.down[j - 1];
+
+                    if (!InRange(upCell)) continue;
+
+                    CellType upCellType = GetCellType(upCell);
+                    if (upCellType == CellType.Empty) cell.FlowToEmptyCell(upCell, cell.volume - cell.maxVolume);
+                    else if (upCellType == CellType.Water) cell.FlowToFluidCell(upCell, cell.volume - cell.maxVolume, true);
+                }
+            }
+        }
+
         RenderGrid();
     }
 
@@ -534,7 +573,7 @@ public class CellularAutomata : MonoBehaviour
                 else if (grid[x, y].type == CellType.Stone)
                     cellsUI[x, y].color = UnityEngine.Color.gray;
                 else if (grid[x, y].type == CellType.Water)
-                    cellsUI[x, y].color = UnityEngine.Color.blue;
+                    cellsUI[x, y].color = new UnityEngine.Color(0.3f, 0.3f, 1f - ((Fluid)grid[x, y]).volume * 0.1f, 1f);
             }
         }
     }
