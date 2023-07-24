@@ -475,7 +475,6 @@ public class CellularAutomata : MonoBehaviour
         for (int i = 0; i < 2 * size; i++)
         {
             List<int> adjacentCellsIndexes = new List<int>();
-            bool containsWaterCells = false;
             for (int j = 0; j < size; j++)
             {
                 Vector2Int point = traversingLines.horizontalStartPoints[i] + traversingLines.right[j];
@@ -488,53 +487,11 @@ public class CellularAutomata : MonoBehaviour
                 }
 
                 // balance volume for adjacent cells
-                 if (adjacentCellsIndexes.Count > 0)
-                {
-                    // get total volume
-                    float totalVolume = 0;
-                    foreach (int index in adjacentCellsIndexes)
-                    {
-                        Vector2Int p = traversingLines.horizontalStartPoints[i] + traversingLines.right[index];
-                        totalVolume += ((Fluid)grid[p.x, p.y]).volume;
-                    }
-                    float split = totalVolume / adjacentCellsIndexes.Count;
-
-                    // flow to empty cells on the sides
-                    if (split > Fluid.minFlow)
-                    {
-                        int beforeIndex = adjacentCellsIndexes[0] - 1;
-                        int afterIndex = adjacentCellsIndexes[adjacentCellsIndexes.Count - 1] + 1;
-                        if (beforeIndex >= 0)
-                        {
-                            Vector2Int before = traversingLines.horizontalStartPoints[i] + traversingLines.right[beforeIndex];
-                            if (InRange(before) && GetCellType(before) == CellType.Empty)
-                            {
-                                grid[before.x, before.y] = new Water(this);
-                                adjacentCellsIndexes.Add(beforeIndex);
-                            }
-                        }
-                        if (afterIndex < size)
-                        {
-                            Vector2Int after = traversingLines.horizontalStartPoints[i] + traversingLines.right[afterIndex];
-                            if (InRange(after) && GetCellType(after) == CellType.Empty)
-                            {
-                                grid[after.x, after.y] = new Water(this);
-                                adjacentCellsIndexes.Add(afterIndex);
-                            }
-                        }
-                    }
-                    split = totalVolume / adjacentCellsIndexes.Count;
-
-                    // split total volume between all adjacent cells
-                    foreach (int index in adjacentCellsIndexes)
-                    {
-                        Vector2Int p = traversingLines.horizontalStartPoints[i] + traversingLines.right[index];
-                        ((Fluid)grid[p.x, p.y]).volume = split;
-                    }
-                }
+                if (adjacentCellsIndexes.Count > 0) BalanceAdjacentCells(i, adjacentCellsIndexes);
 
                 adjacentCellsIndexes.Clear();
             }
+            if (adjacentCellsIndexes.Count > 0) BalanceAdjacentCells(i, adjacentCellsIndexes);
         }
 
         // flow up excess volume
@@ -560,6 +517,51 @@ public class CellularAutomata : MonoBehaviour
         }
 
         RenderGrid();
+    }
+
+    private void BalanceAdjacentCells(int horizontalStartPoint, List<int> adjacentCellsIndexes)
+    {
+        // get total volume
+        float totalVolume = 0;
+        foreach (int index in adjacentCellsIndexes)
+        {
+            Vector2Int p = traversingLines.horizontalStartPoints[horizontalStartPoint] + traversingLines.right[index];
+            totalVolume += ((Fluid)grid[p.x, p.y]).volume;
+        }
+        float split = totalVolume / adjacentCellsIndexes.Count;
+
+        // flow to empty cells on the sides
+        if (split > Fluid.minFlow)
+        {
+            int beforeIndex = adjacentCellsIndexes[0] - 1;
+            int afterIndex = adjacentCellsIndexes[adjacentCellsIndexes.Count - 1] + 1;
+            if (beforeIndex >= 0)
+            {
+                Vector2Int before = traversingLines.horizontalStartPoints[horizontalStartPoint] + traversingLines.right[beforeIndex];
+                if (InRange(before) && GetCellType(before) == CellType.Empty)
+                {
+                    grid[before.x, before.y] = new Water(this);
+                    adjacentCellsIndexes.Add(beforeIndex);
+                }
+            }
+            if (afterIndex < size)
+            {
+                Vector2Int after = traversingLines.horizontalStartPoints[horizontalStartPoint] + traversingLines.right[afterIndex];
+                if (InRange(after) && GetCellType(after) == CellType.Empty)
+                {
+                    grid[after.x, after.y] = new Water(this);
+                    adjacentCellsIndexes.Add(afterIndex);
+                }
+            }
+        }
+        split = totalVolume / adjacentCellsIndexes.Count;
+
+        // split total volume between all adjacent cells
+        foreach (int index in adjacentCellsIndexes)
+        {
+            Vector2Int p = traversingLines.horizontalStartPoints[horizontalStartPoint] + traversingLines.right[index];
+            ((Fluid)grid[p.x, p.y]).volume = split;
+        }
     }
 
     private void RenderGrid()
