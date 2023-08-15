@@ -228,15 +228,16 @@ public abstract class DynamicCell : Cell
 public abstract class Fluid : DynamicCell
 {
     public float volume;
-    public float maxVolume;
-    public static float defaultMaxVolume = 1;
+    public float capacity;
+    public static float maxVolume = 3f;
+    public static float defaultMaxVolume = 1f;
     public static float compression = 0.15f;
     public static float minFlow = 0.1f;
 
-    public Fluid(CellularAutomata ca, float volume = 1) : base(ca)
+    public Fluid(CellularAutomata ca, float volume = 1f) : base(ca)
     {
         this.volume = volume;
-        maxVolume = defaultMaxVolume;
+        capacity = defaultMaxVolume;
     }
 
     public override void SimulateCell(Vector2Int p)
@@ -331,7 +332,7 @@ public abstract class Fluid : DynamicCell
                 if (ca.grid[p.x, p.y] == null) FlowToEmptyCell(p, split);
                 else FlowToFluidCell(p, split);
                 Fluid pCell = (Fluid)ca.grid[p.x, p.y];
-                if (pCell.volume >= pCell.maxVolume)
+                if (pCell.volume >= pCell.capacity)
                 {
                     flowTo.RemoveAt(i);
                     i--;
@@ -355,7 +356,7 @@ public abstract class Fluid : DynamicCell
     {
         Fluid pCell = (Fluid)ca.grid[p.x, p.y];
         float transfer = maxFlow;
-        if (!overflow) transfer = Mathf.Min(pCell.maxVolume - pCell.volume, maxFlow);
+        if (!overflow) transfer = Mathf.Min(pCell.capacity - pCell.volume, maxFlow);
         if (transfer <= 0) return 0;
         pCell.volume += transfer;
         volume -= transfer;
@@ -454,7 +455,7 @@ public class CellularAutomata : MonoBehaviour
                     nextVolume = Fluid.defaultMaxVolume;
                     continue;
                 }
-                ((Fluid)grid[point.x, point.y]).maxVolume = nextVolume;
+                ((Fluid)grid[point.x, point.y]).capacity = nextVolume;
                 nextVolume += Fluid.compression;
             }
         }
@@ -503,15 +504,19 @@ public class CellularAutomata : MonoBehaviour
                 if (GetCellType(point) == CellType.Water)
                 {
                     Fluid cell = (Fluid)grid[point.x, point.y];
-                    if (cell.volume <= cell.maxVolume) continue;
+                    if (cell.volume <= cell.capacity) continue;
 
                     Vector2Int upCell = traversingLines.verticalStartPoints[i] + traversingLines.down[j - 1];
 
                     if (!InRange(upCell)) continue;
 
                     CellType upCellType = GetCellType(upCell);
-                    if (upCellType == CellType.Empty) cell.FlowToEmptyCell(upCell, cell.volume - cell.maxVolume);
-                    else if (upCellType == CellType.Water) cell.FlowToFluidCell(upCell, cell.volume - cell.maxVolume, true);
+                    if (upCellType == CellType.Empty) cell.FlowToEmptyCell(upCell, cell.volume - cell.capacity);
+                    else if (upCellType == CellType.Water)
+                    {
+                        float transfer = Mathf.Min(cell.volume - cell.capacity, Fluid.maxVolume - ((Fluid)grid[upCell.x, upCell.y]).volume);
+                        cell.FlowToFluidCell(upCell, transfer, true);
+                    }
                 }
             }
         }
