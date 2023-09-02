@@ -13,12 +13,11 @@ public class TraversingLines
 {
     private int size;
 
-    public Vector2Int[] verticalStartPoints;
-    public Vector2Int[] iAxisStartPoints;
-    public Vector2Int[] jAxisStartPoints;
-    public Vector2 downDir;
-    public Vector2Int[] down;
-    public Vector2Int[] right;
+    public Vector3Int[,] verticalStartPoints;
+    public Vector3Int[] horizontalStartPoints;
+    public Vector3 downDir;
+    public Vector3Int[] down;
+    public Vector3Int[] right;
     public Hashtable pointIndexOnDownPath = new Hashtable();
     public Hashtable pointIndexOnRightPath = new Hashtable();
 
@@ -27,36 +26,36 @@ public class TraversingLines
     public TraversingLines(int size)
     {
         this.size = size;
-        verticalStartPoints = new Vector2Int[2 * size];
-        horizontalStartPoints = new Vector2Int[2 * size];
-        down = new Vector2Int[size];
-        right = new Vector2Int[size];
-        shuffledIndexes = new int[size];
+        verticalStartPoints = new Vector3Int[2 * size, 2 * size];
+        horizontalStartPoints = new Vector3Int[2 * size];
+        down = new Vector3Int[size];
+        right = new Vector3Int[size];
+        shuffledIndexes = new int[size * size];
     }
 
     public void ShuffleIndexes()
     {
-        for (int i = 0; i < size; i++) shuffledIndexes[i] = i;
+        /*for (int i = 0; i < size; i++) shuffledIndexes[i] = i;
         for (int i = size; i > 1; i--)
         {
             int p = Random.Range(0, i);
             int tmp = shuffledIndexes[i - 1];
             shuffledIndexes[i - 1] = shuffledIndexes[p];
             shuffledIndexes[p] = tmp;
-        }
+        }*/
     }
 
-    public void GenerateLines(Vector2 downDir)
+    public void GenerateLines(Vector3 downDir)
     {
         // vertical traversing
         downDir = downDir.normalized;
         this.downDir = downDir;
-        down = CellularVector.Bresenham(Vector2Int.zero, CellularVector.Round(downDir * size * 1.5f)).GetRange(0, size).ToArray();
+        down = CellularVector3D.Bresenham3D(Vector3Int.zero, CellularVector3D.Round(downDir * size * 1.5f)).GetRange(0, size).ToArray();
 
-        Vector2 downNormalDir = GenerateStartPoints(size, downDir, ref verticalStartPoints);
+        Vector2 downNormalDir = GeneratePlaneStartPoints(size, downDir, ref verticalStartPoints);
 
         // horizontal traversing
-        Vector2 rightDir = Vector2.Perpendicular(downDir).normalized;
+        Vector3 iDir = rightDir;
         if (Vector2.Dot(downNormalDir, rightDir) < 0) rightDir *= -1;
         right = CellularVector.Bresenham(Vector2Int.zero, Vector2Int.FloorToInt(rightDir * size * 1.5f)).GetRange(0, size).ToArray();
         GenerateStartPoints(size, rightDir, ref horizontalStartPoints);
@@ -86,35 +85,61 @@ public class TraversingLines
         }
     }
 
-    private static Vector2 GenerateStartPoints(int size, Vector2 dir, ref Vector2Int[] startPoints) // returns normal to the start points plane
+    private static Vector2 GeneratePlaneStartPoints(int size, Vector2 dir, ref Vector3Int[,] startPoints) // returns normal to the start points plane
     {
-        Vector2 normalDir;
-        Vector2 planeCenter;
-        if (Vector2.Angle(Vector2.down, dir) <= 45f)
+        Vector3 normalDir;
+        Vector3 iOvershootDir, jOvershootDir;
+        Vector3 planeCenter;
+        if (Vector3.Angle(Vector3.down, dir) <= 45f)
         {
-            normalDir = Vector2.down;
-            planeCenter = new Vector2Int(size / 2, size - 1);
+            normalDir = Vector3.down;
+            iOvershootDir = Vector3.right;
+            jOvershootDir = Vector3.forward;
+            planeCenter = new Vector3(size / 2, size - 1, size / 2);
         }
-        else if (Vector2.Angle(Vector2.up, dir) <= 45f)
+        else if (Vector3.Angle(Vector3.up, dir) <= 45f)
         {
-            normalDir = Vector2.up;
-            planeCenter = new Vector2(size / 2, 0);
+            normalDir = Vector3.up;
+            iOvershootDir = Vector3.right;
+            jOvershootDir = Vector3.forward;
+            planeCenter = new Vector3(size / 2, 0, size / 2);
         }
-        else if (Vector2.Angle(Vector2.left, dir) <= 45f)
+        else if (Vector3.Angle(Vector3.left, dir) <= 45f)
         {
-            normalDir = Vector2.left;
-            planeCenter = new Vector2(size - 1, size / 2);
+            normalDir = Vector3.left;
+            iOvershootDir = Vector3.up;
+            jOvershootDir = Vector3.forward;
+            planeCenter = new Vector3(size - 1, size / 2, size / 2);
+        }
+        else if (Vector3.Angle(Vector3.right, dir) <= 45f)
+        {
+            normalDir = Vector3.right;
+            iOvershootDir = Vector3.up;
+            jOvershootDir = Vector3.forward;
+            planeCenter = new Vector3(0, size / 2, size / 2);
+        }
+        else if (Vector3.Angle(Vector3.forward, dir) <= 45f)
+        {
+            normalDir = Vector3.forward;
+            iOvershootDir = Vector3.up;
+            jOvershootDir = Vector3.right;
+            planeCenter = new Vector3(size / 2, size / 2, 0);
         }
         else
         {
-            normalDir = Vector2.right;
-            planeCenter = new Vector2(0, size / 2);
+            normalDir = Vector3.back;
+            iOvershootDir = Vector3.up;
+            jOvershootDir = Vector3.right;
+            planeCenter = new Vector3(size / 2, size / 2, size - 1);
         }
-        Vector2 overshootDir = Vector2.Perpendicular(normalDir).normalized;
-        if (Vector2.Dot(overshootDir, dir) > 0) overshootDir *= -1;
+        if (Vector3.Dot(iOvershootDir, dir) > 0) iOvershootDir *= -1;
+        if (Vector3.Dot(jOvershootDir, dir) > 0) jOvershootDir *= -1;
         for (int i = 0; i < 2 * size; i++)
         {
-            startPoints[i] = CellularVector.Round(planeCenter + (i - size / 2) * overshootDir);
+            for (int j = 0; j < 2 * size; j++)
+            {
+                startPoints[i, j] = CellularVector3D.Round(planeCenter + (i - size / 2) * overshootDir);
+            }
         }
         return normalDir;
     }

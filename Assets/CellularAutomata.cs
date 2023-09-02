@@ -1,4 +1,4 @@
-using System.Collections;
+/*using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -284,7 +284,7 @@ public abstract class Fluid : DynamicCell
         }
 
         // reset the momentum and deviation if the cell hit the ground, otherwise update the deviation vector
-        /*if (farthestPoint == fallPath.Count - 1)
+        *//*if (farthestPoint == fallPath.Count - 1)
         {
             deviation = start + deviation + momentum - end;
         }
@@ -292,7 +292,7 @@ public abstract class Fluid : DynamicCell
         {
             momentum = Vector2.zero;
             deviation = Vector2.zero;
-        }*/
+        }*//*
         if (fallPath.Count < (int)momentum || isFarthestPointFluid || farthestPoint != fallPath.Count - 1) momentum = 0;
 
         // flow down to the cells on the fallPath starting from the farthest fall point
@@ -599,4 +599,4 @@ public class CellularAutomata : MonoBehaviour
     {
         return !InRange(p) || grid[p.x, p.y] == null ? CellType.Empty : grid[p.x, p.y].type;
     }
-}
+}*/
