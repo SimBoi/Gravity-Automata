@@ -52,10 +52,11 @@ public class TraversingLines
         this.downDir = downDir;
         down = CellularVector3D.Bresenham3D(Vector3Int.zero, CellularVector3D.Round(downDir * size * 1.5f)).GetRange(0, size).ToArray();
 
-        Vector2 downNormalDir = GeneratePlaneStartPoints(size, downDir, ref verticalStartPoints);
+        Vector3 downNormalDir = GeneratePlaneStartPoints(size, downDir, ref verticalStartPoints);
 
         // horizontal traversing
-        Vector3 iDir = rightDir;
+        Vector3 iDir = Vector3.ProjectOnPlane(Vector3.right, -downDir).normalized;
+        Vector3 jDir = Vector3.ProjectOnPlane(Vector3.forward, -downDir).normalized;
         if (Vector2.Dot(downNormalDir, rightDir) < 0) rightDir *= -1;
         right = CellularVector.Bresenham(Vector2Int.zero, Vector2Int.FloorToInt(rightDir * size * 1.5f)).GetRange(0, size).ToArray();
         GenerateStartPoints(size, rightDir, ref horizontalStartPoints);
@@ -85,7 +86,7 @@ public class TraversingLines
         }
     }
 
-    private static Vector2 GeneratePlaneStartPoints(int size, Vector2 dir, ref Vector3Int[,] startPoints) // returns normal to the start points plane
+    private static Vector3 GeneratePlaneStartPoints(int size, Vector3 dir, ref Vector3Int[,] startPoints) // returns normal to the start points plane
     {
         Vector3 normalDir;
         Vector3 iOvershootDir, jOvershootDir;
@@ -138,11 +139,13 @@ public class TraversingLines
         {
             for (int j = 0; j < 2 * size; j++)
             {
-                startPoints[i, j] = CellularVector3D.Round(planeCenter + (i - size / 2) * overshootDir);
+                startPoints[i, j] = CellularVector3D.Round(planeCenter + (i - size / 2) * iOvershootDir + (j - size / 2) * jOvershootDir);
             }
         }
         return normalDir;
     }
+
+    private static Vector
 
     // returns the same point if the target point is out of bounds
     public Vector2Int GetNeightborPoint(Vector2Int point, int verticalDiff, int horizontalDiff)
