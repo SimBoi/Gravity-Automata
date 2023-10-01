@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 public class Brush : MonoBehaviour
 {
-    public int size = 1;
+    /*public int size = 1;
     public CellType fillType = CellType.Stone;
 
     private CellularAutomata ca;
@@ -57,5 +57,5 @@ public class Brush : MonoBehaviour
                 }
             }
         }
-    }
+    }*/
 }

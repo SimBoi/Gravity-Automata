@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 public class traversingtest : MonoBehaviour
 {
-    public bool reset;
+    /*public bool reset;
     public Vector2 gravity;
     private Vector2 prevGravity = Vector2.zero;
     public int size = 100;
@@ -84,5 +84,5 @@ public class traversingtest : MonoBehaviour
     public bool InRange(int x, int y)
     {
         return x >= 0 && x < size && y >= 0 && y < size;
-    }
+    }*/
 }
