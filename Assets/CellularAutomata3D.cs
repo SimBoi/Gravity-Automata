@@ -360,14 +360,12 @@ public abstract class Fluid : DynamicCell
         if (volume > 0) FlowDiagonally(p);
 
         // remove empty cell
-        if (volume <= 0) ca.grid[p.x, p.y] = null;
+        if (volume <= 0) ca.grid[p.x, p.y, p.z] = null;
     }
 
     public void FlowDown(Vector3Int start)
     {
-        // get the fall path using the bresenham algorithm on the current momentum and deviation
-        //Vector3Int end = CellularVector.Round(start + deviation + momentum);
-        //List<Vector3Int> fallPath = start != end ? CellularVector.Bresenham(start, end) : new List<Vector3Int>() { start };
+        // get the fall path from point start with the current momentum
         List<Vector3Int> fallPath = ca.traversingLines.GetVerticalPath(start, -(int)momentum - 1);
         fallPath.RemoveAt(0);
 
@@ -379,8 +377,8 @@ public abstract class Fluid : DynamicCell
             Vector3Int p = fallPath[i];
             if (ca.InRange(p))
             {
-                if (ca.grid[p.x, p.y] == null) isFarthestPointFluid = false;
-                else if (ca.grid[p.x, p.y].type == type) isFarthestPointFluid = true;
+                if (ca.grid[p.x, p.y, p.z] == null) isFarthestPointFluid = false;
+                else if (ca.grid[p.x, p.y, p.z].type == type) isFarthestPointFluid = true;
                 else break;
                 farthestPoint = i;
             }
@@ -388,23 +386,13 @@ public abstract class Fluid : DynamicCell
         }
 
         // reset the momentum and deviation if the cell hit the ground, otherwise update the deviation vector
-        if (farthestPoint == fallPath.Count - 1)
-        {
-            deviation = start + deviation + momentum - end;
-        }
-        else
-        {
-            momentum = Vector3.zero;
-            deviation = Vector3.zero;
-        }
-
         if (fallPath.Count < (int)momentum || isFarthestPointFluid || farthestPoint != fallPath.Count - 1) momentum = 0;
 
         // flow down to the cells on the fallPath starting from the farthest fall point
         for (int i = farthestPoint; i >= 0; i--)
         {
             Vector3Int p = fallPath[i];
-            if (ca.grid[p.x, p.y] == null) FlowToEmptyCell(p, volume);
+            if (ca.grid[p.x, p.y, p.z] == null) FlowToEmptyCell(p, volume);
             else FlowToFluidCell(p, volume);
             if (volume <= 0) return;
         }
@@ -414,8 +402,10 @@ public abstract class Fluid : DynamicCell
     {
         List<Vector3Int> flowTo = new List<Vector3Int>
         {
-            ca.traversingLines.GetNeightborPoint(start, -1, 1),
-            ca.traversingLines.GetNeightborPoint(start, -1, -1)
+            ca.traversingLines.GetNeightborPoint(start, -1, 1, 0),
+            ca.traversingLines.GetNeightborPoint(start, -1, -1, 0),
+            ca.traversingLines.GetNeightborPoint(start, -1, 0, 1),
+            ca.traversingLines.GetNeightborPoint(start, -1, 0, -1)
         };
 
         for (int i = 0; i < flowTo.Count; i++)
@@ -434,9 +424,9 @@ public abstract class Fluid : DynamicCell
             for (int i = 0; i < flowTo.Count; i++)
             {
                 Vector3Int p = flowTo[i];
-                if (ca.grid[p.x, p.y] == null) FlowToEmptyCell(p, split);
+                if (ca.grid[p.x, p.y, p.z] == null) FlowToEmptyCell(p, split);
                 else FlowToFluidCell(p, split);
-                Fluid pCell = (Fluid)ca.grid[p.x, p.y];
+                Fluid pCell = (Fluid)ca.grid[p.x, p.y, p.z];
                 if (pCell.volume >= pCell.capacity)
                 {
                     flowTo.RemoveAt(i);
@@ -453,13 +443,13 @@ public abstract class Fluid : DynamicCell
         Fluid newCell = (Fluid)NewCell(new object[] { ca, transfer });
         newCell.hasBeenSimulated = true;
         newCell.momentum = momentum;
-        ca.grid[p.x, p.y] = newCell;
+        ca.grid[p.x, p.y, p.z] = newCell;
         return transfer;
     }
 
     public float FlowToFluidCell(Vector3Int p, float maxFlow, bool overflow = false)
     {
-        Fluid pCell = (Fluid)ca.grid[p.x, p.y];
+        Fluid pCell = (Fluid)ca.grid[p.x, p.y, p.z];
         float transfer = maxFlow;
         if (!overflow) transfer = Mathf.Min(pCell.capacity - pCell.volume, maxFlow);
         if (transfer <= 0) return 0;
@@ -468,7 +458,6 @@ public abstract class Fluid : DynamicCell
         return transfer;
     }
 }
-
 
 ////////// cell types
 
@@ -509,14 +498,14 @@ public class CellularAutomata3D : MonoBehaviour
     public TraversingLines traversingLines;
 
     public GameObject cellPrefab;
-    private GameObject[,,] cellsUI;
+    private Renderer[,,] cellsUI;
 
     // Start is called before the first frame update
     private void Start()
     {
         transform.localScale = new Vector3(scale, scale, scale);
         grid = new Cell[size, size, size];
-        cellsUI = new GameObject[size, size, size];
+        cellsUI = new Renderer[size, size, size];
         for (int x = 0; x < size; x++)
         {
             for (int y = 0; y < size; y++)
@@ -525,7 +514,7 @@ public class CellularAutomata3D : MonoBehaviour
                 {
                     GameObject cell = Instantiate(cellPrefab, transform);
                     cell.transform.localPosition = new Vector3(x - size / 2, y - size / 2, z - size / 2);
-                    cellsUI[x, y, z] = cell;
+                    cellsUI[x, y, z] = cell.GetComponent<Renderer>();
                 }
             }
         }
@@ -685,21 +674,21 @@ public class CellularAutomata3D : MonoBehaviour
 
     private void RenderGrid()
     {
-        /*for (int x = 0; x < size; x++)
+        for (int x = 0; x < size; x++)
         {
             for (int y = 0; y < size; y++)
             {
                 for (int z = 0; z < size; z++)
                 {
                     if (grid[x, y, z] == null)
-                        cellsUI[x, y, z].color = UnityEngine.Color.black;
+                        cellsUI[x, y, z].material.color = UnityEngine.Color.black;
                     else if (grid[x, y, z].type == CellType.Stone)
-                        cellsUI[x, y, z].color = UnityEngine.Color.gray;
+                        cellsUI[x, y, z].material.color = UnityEngine.Color.gray;
                     else if (grid[x, y, z].type == CellType.Water)
-                        cellsUI[x, y, z].color = new UnityEngine.Color(0.3f, 0.3f, 1f - ((Fluid)grid[x, y, z]).volume * 0.1f, 1f);
+                        cellsUI[x, y, z].material.color = new UnityEngine.Color(0.3f, 0.3f, 1f - ((Fluid)grid[x, y, z]).volume * 0.1f, 1f);
                 }
             }
-        }*/
+        }
     }
 
     public bool InRange(Vector3Int coords)
