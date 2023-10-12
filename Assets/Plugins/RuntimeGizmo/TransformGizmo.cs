@@ -163,11 +163,11 @@ namespace RuntimeGizmos
 			}else{
 				SetNearAxis();
 			}
-			
+
 			GetTarget();
 
 			if(mainTargetRoot == null) return;
-			
+
 			TransformSelected();
 		}
 
@@ -177,7 +177,7 @@ namespace RuntimeGizmos
 
 			//We run this in lateupdate since coroutines run after update and we want our gizmos to have the updated target transform position after TransformSelected()
 			SetAxisInfo();
-			
+
 			if(manuallyHandleGizmo)
 			{
 				if(onDrawCustomGizmo != null) onDrawCustomGizmo();
@@ -285,7 +285,7 @@ namespace RuntimeGizmos
 		{
 			return ExtTransformType.TransformTypeContains(mainType, type, GetProperTransformSpace());
 		}
-		
+
 		public float GetHandleLength(TransformType type, Axis axis = Axis.None, bool multiplyDistanceMultiplier = true)
 		{
 			float length = handleLength;
@@ -359,7 +359,7 @@ namespace RuntimeGizmos
 				}
 			}
 		}
-		
+
 		IEnumerator TransformSelected(TransformType transType)
 		{
 			isTransforming = true;
@@ -458,7 +458,7 @@ namespace RuntimeGizmos
 					{
 						Vector3 projected = (nearAxis == Axis.Any) ? transform.right : projectedAxis;
 						float scaleAmount = ExtVector3.MagnitudeInDirection(mousePosition - previousMousePosition, projected) * scaleSpeedMultiplier;
-						
+
 						if(isSnapping && scaleSnap > 0)
 						{
 							currentSnapScaleAmount += scaleAmount;
@@ -476,7 +476,7 @@ namespace RuntimeGizmos
 
 						//WARNING - There is a bug in unity 5.4 and 5.5 that causes InverseTransformDirection to be affected by scale which will break negative scaling. Not tested, but updating to 5.4.2 should fix it - https://issuetracker.unity3d.com/issues/transformdirection-and-inversetransformdirection-operations-are-affected-by-scale
 						Vector3 localAxis = (GetProperTransformSpace() == TransformSpace.Local && nearAxis != Axis.Any) ? mainTargetRoot.InverseTransformDirection(axis) : axis;
-						
+
 						Vector3 targetScaleAmount = Vector3.one;
 						if(nearAxis == Axis.Any) targetScaleAmount = (ExtVector3.Abs(mainTargetRoot.localScale.normalized) * scaleAmount);
 						else targetScaleAmount = localAxis * scaleAmount;
@@ -628,7 +628,7 @@ namespace RuntimeGizmos
 
 			return Vector3.zero;
 		}
-	
+
 		void GetTarget()
 		{
 			if(nearAxis == Axis.None && Input.GetMouseButtonDown(0))
@@ -636,7 +636,7 @@ namespace RuntimeGizmos
 				bool isAdding = Input.GetKey(AddSelection);
 				bool isRemoving = Input.GetKey(RemoveSelection);
 
-				RaycastHit hitInfo; 
+				RaycastHit hitInfo;
 				if(Physics.Raycast(myCamera.ScreenPointToRay(Input.mousePosition), out hitInfo, Mathf.Infinity, selectionMask))
 				{
 					Transform target = hitInfo.transform;
@@ -726,11 +726,11 @@ namespace RuntimeGizmos
 						materialsBuffer.Clear();
 						materialsBuffer.AddRange(render.sharedMaterials);
 
-						if(!materialsBuffer.Contains(outlineMaterial))
+						/*if(!materialsBuffer.Contains(outlineMaterial))
 						{
 							materialsBuffer.Add(outlineMaterial);
 							render.materials = materialsBuffer.ToArray();
-						}
+						}*/
 
 						highlightedRenderers.Add(render);
 					}
@@ -779,11 +779,11 @@ namespace RuntimeGizmos
 					materialsBuffer.Clear();
 					materialsBuffer.AddRange(render.sharedMaterials);
 
-					if(materialsBuffer.Contains(outlineMaterial))
+					/*if(materialsBuffer.Contains(outlineMaterial))
 					{
 						materialsBuffer.Remove(outlineMaterial);
 						render.materials = materialsBuffer.ToArray();
-					}
+					}*/
 				}
 
 				highlightedRenderers.Remove(render);
@@ -960,7 +960,7 @@ namespace RuntimeGizmos
 					//Important to check the planes first before the handle tip since it makes selecting the planes easier.
 					float planeMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + planeSize) * distanceMultiplier;
 					HandleNearestPlanes(TransformType.Move, handlePlanes, planeMinSelectedDistanceCheck);
-						
+
 					if(nearAxis != Axis.None)
 					{
 						planeAxis = nearAxis;
@@ -979,7 +979,7 @@ namespace RuntimeGizmos
 					HandleNearestLines(transType, handleLines, handleMinSelectedDistanceCheck);
 				}
 			}
-			
+
 			if(nearAxis == Axis.None && TransformTypeContains(TransformType.Rotate))
 			{
 				HandleNearestLines(TransformType.Rotate, circlesLines, handleMinSelectedDistanceCheck);
@@ -1066,26 +1066,6 @@ namespace RuntimeGizmos
 
 			return closestDistance;
 		}
-
-		//float DistanceFromMouseToPlane(List<Vector3> planeLines)
-		//{
-		//	if(planeLines.Count >= 4)
-		//	{
-		//		Ray mouseRay = myCamera.ScreenPointToRay(Input.mousePosition);
-		//		Plane plane = new Plane(planeLines[0], planeLines[1], planeLines[2]);
-
-		//		float distanceToPlane;
-		//		if(plane.Raycast(mouseRay, out distanceToPlane))
-		//		{
-		//			Vector3 pointOnPlane = mouseRay.origin + (mouseRay.direction * distanceToPlane);
-		//			Vector3 planeCenter = (planeLines[0] + planeLines[1] + planeLines[2] + planeLines[3]) / 4f;
-
-		//			return Vector3.Distance(planeCenter, pointOnPlane);
-		//		}
-		//	}
-
-		//	return float.MaxValue;
-		//}
 
 		void SetAxisInfo()
 		{
@@ -1296,21 +1276,21 @@ namespace RuntimeGizmos
 			Vector3 up = axisDirection.normalized * size;
 			Vector3 forward = Vector3.Slerp(up, -up, .5f);
 			Vector3 right = Vector3.Cross(up, forward).normalized * size;
-		
+
 			Matrix4x4 matrix = new Matrix4x4();
-		
+
 			matrix[0] = right.x;
 			matrix[1] = right.y;
 			matrix[2] = right.z;
-		
+
 			matrix[4] = up.x;
 			matrix[5] = up.y;
 			matrix[6] = up.z;
-		
+
 			matrix[8] = forward.x;
 			matrix[9] = forward.y;
 			matrix[10] = forward.z;
-		
+
 			Vector3 lastPoint = origin + matrix.MultiplyPoint3x4(new Vector3(Mathf.Cos(0), 0, Mathf.Sin(0)));
 			Vector3 nextPoint = Vector3.zero;
 			float multiplier = 360f / circleDetail;
@@ -1324,9 +1304,9 @@ namespace RuntimeGizmos
 				nextPoint.x = Mathf.Cos((i * multiplier) * Mathf.Deg2Rad);
 				nextPoint.z = Mathf.Sin((i * multiplier) * Mathf.Deg2Rad);
 				nextPoint.y = 0;
-			
+
 				nextPoint = origin + matrix.MultiplyPoint3x4(nextPoint);
-			
+
 				if(!depthTest || plane.GetSide(lastPoint))
 				{
 					Vector3 centerPoint = (lastPoint + nextPoint) * .5f;

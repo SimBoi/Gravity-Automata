@@ -327,7 +327,7 @@ public abstract class DynamicCell : Cell
 
     public void ApplyForces()
     {
-        momentum += ca.gravity.magnitude * (1.0f / ca.fps);
+        momentum += ca.gravity.magnitude * (1 / ca.fps);
         if (momentum < 1) momentum = 1;
     }
 }
@@ -352,6 +352,8 @@ public abstract class Fluid : DynamicCell
         if (hasBeenSimulated) return;
         hasBeenSimulated = true;
 
+        float prevVolume = volume;
+
         // apply acceletation due to gravity
         ApplyForces();
 
@@ -361,6 +363,9 @@ public abstract class Fluid : DynamicCell
 
         // remove empty cell
         if (volume <= 0) ca.grid[p.x, p.y, p.z] = null;
+
+        // update marching cubes
+        if (prevVolume != volume) ca.water.UpdateVoxel(p, volume <= 0 ? 1 : -volume);
     }
 
     public void FlowDown(Vector3Int start)
@@ -444,6 +449,7 @@ public abstract class Fluid : DynamicCell
         newCell.hasBeenSimulated = true;
         newCell.momentum = momentum;
         ca.grid[p.x, p.y, p.z] = newCell;
+        ca.water.UpdateVoxel(p, -transfer);
         return transfer;
     }
 
@@ -454,6 +460,7 @@ public abstract class Fluid : DynamicCell
         if (!overflow) transfer = Mathf.Min(pCell.capacity - pCell.volume, maxFlow);
         if (transfer <= 0) return 0;
         pCell.volume += transfer;
+        ca.water.UpdateVoxel(p, -pCell.volume);
         volume -= transfer;
         return transfer;
     }
@@ -491,55 +498,31 @@ public class Water : Fluid
 
 public class CellularAutomata3D : MonoBehaviour
 {
-    public int size, scale = 1, fps = 30;
+    public int size;
+    public float fps = 30;
     public Cell[,,] grid;
     public Vector3 gravity; // relative to the local grid
-
     public TraversingLines traversingLines;
+    public MarchingCubesChunk water;
 
-    public GameObject cellPrefab;
-    private Renderer[,,] cellsUI;
-
-    // Start is called before the first frame update
-    private void Start()
+    public void GenerateEnv()
     {
-        transform.localScale = new Vector3(scale, scale, scale);
         grid = new Cell[size, size, size];
-        cellsUI = new Renderer[size, size, size];
-        for (int x = 0; x < size; x++)
-        {
-            for (int y = 0; y < size; y++)
-            {
-                for (int z = 0; z < size; z++)
-                {
-                    GameObject cell = Instantiate(cellPrefab, transform);
-                    cell.transform.localPosition = new Vector3(x - size / 2, y - size / 2, z - size / 2);
-                    cellsUI[x, y, z] = cell.GetComponent<Renderer>();
-                }
-            }
-        }
-
         traversingLines = new TraversingLines(size);
-        UpdateGravity();
+        UpdateGravity(gravity);
     }
 
-    public bool needregenerate = false;
-    private void UpdateGravity()
+    public void UpdateGravity(Vector3 newDir)
     {
+        gravity = newDir;
         traversingLines.GenerateLines(gravity);
     }
 
-    // Update is called once per frame
-    private void FixedUpdate()
+    public void SimulateStep()
     {
-        if (needregenerate)
-        {
-            needregenerate = false;
-            UpdateGravity();
-        }
         for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
-                for (int z = 0; z > size; z++)
+                for (int z = 0; z < size; z++)
                     if (grid[x, y, z] != null) grid[x, y, z].hasBeenSimulated = false;
 
         // update compression
@@ -624,8 +607,6 @@ public class CellularAutomata3D : MonoBehaviour
                 }
             }
         }
-
-        RenderGrid();
     }
 
     private void GetAdjacentCellsRecursive(Hashtable visited, List<Vector3Int> waterBody, List<Vector3Int> silhouette, Vector3Int p)
@@ -669,25 +650,11 @@ public class CellularAutomata3D : MonoBehaviour
         split = totalVolume / waterBody.Count;
 
         // split total volume between all adjacent cells
-        foreach (Vector3Int p in waterBody) ((Fluid)grid[p.x, p.y, p.z]).volume = split;
-    }
-
-    private void RenderGrid()
-    {
-        for (int x = 0; x < size; x++)
+        foreach (Vector3Int p in waterBody)
         {
-            for (int y = 0; y < size; y++)
-            {
-                for (int z = 0; z < size; z++)
-                {
-                    if (grid[x, y, z] == null)
-                        cellsUI[x, y, z].material.color = UnityEngine.Color.black;
-                    else if (grid[x, y, z].type == CellType.Stone)
-                        cellsUI[x, y, z].material.color = UnityEngine.Color.gray;
-                    else if (grid[x, y, z].type == CellType.Water)
-                        cellsUI[x, y, z].material.color = new UnityEngine.Color(0.3f, 0.3f, 1f - ((Fluid)grid[x, y, z]).volume * 0.1f, 1f);
-                }
-            }
+            Fluid cell = (Fluid)grid[p.x, p.y, p.z];
+            cell.volume = split;
+            water.UpdateVoxel(p, -cell.volume);
         }
     }
 

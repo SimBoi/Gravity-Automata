@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine;
 
 namespace RuntimeSceneGizmo
 {
@@ -311,11 +312,11 @@ namespace RuntimeSceneGizmo
 
 			gizmoFadeMaterial.SetFloat( gizmoMaterialFadeProperty, alpha );
 			if( component == GizmoComponent.XNegative || component == GizmoComponent.XPositive )
-				labels[0].color = new Color( 1f, 1f, 1f, alpha );
+				labels[0].color = new Color( 0f, 0f, 0f, alpha );
 			else if( component == GizmoComponent.ZNegative || component == GizmoComponent.ZPositive )
-				labels[2].color = new Color( 1f, 1f, 1f, alpha );
+				labels[2].color = new Color( 0f, 0f, 0f, alpha );
 			else
-				labels[1].color = new Color( 1f, 1f, 1f, alpha );
+				labels[1].color = new Color( 0f, 0f, 0f, alpha );
 		}
 
 		private void SetMaterialOf( GizmoComponent component, Material material )
