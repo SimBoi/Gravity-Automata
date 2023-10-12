@@ -58,6 +58,8 @@ public class TraversingLines
 
     public void GenerateLines(Vector3 downDir)
     {
+        downDir = downDir.normalized;
+
         // avoid multiple start point planes in 45 degees tilt situations
         if (downDir.x == downDir.y) downDir.y += epsilon;
         if (downDir.x == downDir.z) downDir.z += epsilon;
@@ -65,7 +67,6 @@ public class TraversingLines
 
         //////// vertical traversing ////////
 
-        downDir = downDir.normalized;
         this.downDir = downDir;
         down = CellularVector3D.Bresenham3D(Vector3Int.zero, CellularVector3D.Round(downDir * size * 1.5f)).GetRange(0, size).ToArray();
 
@@ -74,8 +75,8 @@ public class TraversingLines
         //////// horizontal traversing ////////
 
         // get horizontal plane axis
-        Vector3 iDir = Vector3.ProjectOnPlane(Vector3.right, -downDir).normalized;
-        Vector3 jDir = Vector3.ProjectOnPlane(Vector3.forward, -downDir).normalized;
+        Vector3 iDir = Vector3.Cross(downDir, downDir + Vector3.right).normalized;
+        Vector3 jDir = Vector3.Cross(downDir, iDir).normalized;
         Vector3 iPlaneCenter, jPlaneCenter;
         Vector3 iNormalDir = GetPlaneNormal(size, iDir, out iPlaneCenter).normalized;
         Vector3 jNormalDir = GetPlaneNormal(size, jDir, out jPlaneCenter).normalized;
