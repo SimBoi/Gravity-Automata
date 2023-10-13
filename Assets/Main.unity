@@ -3642,7 +3642,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   reset: 1
-  gravity: {x: -10, y: 0, z: 0}
+  gravity: {x: -10, y: -10, z: -10}
   size: 10
   scale: 10
   cellPrefab: {fileID: 132412610834673714, guid: a90607501d63e3d4bbd1fca04d0d049c, type: 3}

@@ -30,16 +30,16 @@ public class TraversingLines
     {
         this.size = size;
         verticalStartPoints = new Vector3Int[2 * size, 2 * size];
-        horizontalStartPoints = new Vector3Int[2 * size];
+        horizontalStartPoints = new Vector3Int[3 * size];
         down = new Vector3Int[size];
-        horizontal = new Vector3Int[size, size];
-        shuffledIndexes = new int[size * size][];
-        for (int i = 0; i < size * size; i++) shuffledIndexes[i] = new int[2];
+        horizontal = new Vector3Int[3 * size / 2, size];
+        shuffledIndexes = new int[(3 * size / 2) * size][];
+        for (int i = 0; i < (3 * size / 2) * size; i++) shuffledIndexes[i] = new int[2];
     }
 
     public void ShuffleIndexes()
     {
-        int totalSize = size * size;
+        int totalSize = (3 * size / 2) * size;
         int[] shuffle = new int[totalSize];
         for (int i = 0; i < totalSize; i++) shuffle[i] = i;
         for (int i = totalSize; i > 1; i--)
@@ -51,8 +51,8 @@ public class TraversingLines
         }
         for (int i = 0; i < totalSize; i++)
         {
-            shuffledIndexes[i][0] = shuffle[i] / size;
-            shuffledIndexes[i][1] = shuffle[i] % size;
+            shuffledIndexes[i][0] = shuffle[i] % (3 * size / 2);
+            shuffledIndexes[i][1] = shuffle[i] / (3 * size / 2);
         }
     }
 
@@ -68,15 +68,16 @@ public class TraversingLines
         //////// vertical traversing ////////
 
         this.downDir = downDir;
-        down = CellularVector3D.Bresenham3D(Vector3Int.zero, CellularVector3D.Round(downDir * size * 1.5f)).GetRange(0, size).ToArray();
+        down = CellularVector3D.Bresenham3D(Vector3Int.zero, CellularVector3D.Round(downDir * 2 * size)).GetRange(0, size).ToArray();
 
-        Vector3 downNormalDir = GeneratePlaneStartPoints(size, downDir, ref verticalStartPoints);
+        Vector3 perpendicularNormal, downNormalDir = GeneratePlaneStartPoints(size, downDir, ref verticalStartPoints, out perpendicularNormal);
 
         //////// horizontal traversing ////////
 
         // get horizontal plane axis
-        Vector3 iDir = Vector3.Cross(downDir, downDir + Vector3.right).normalized;
-        Vector3 jDir = Vector3.Cross(downDir, iDir).normalized;
+        Vector3 iDir, jDir;
+        iDir = Vector3.Cross(downDir, perpendicularNormal).normalized;
+        jDir = Vector3.Cross(downDir, iDir).normalized;
         Vector3 iPlaneCenter, jPlaneCenter;
         Vector3 iNormalDir = GetPlaneNormal(size, iDir, out iPlaneCenter).normalized;
         Vector3 jNormalDir = GetPlaneNormal(size, jDir, out jPlaneCenter).normalized;
@@ -85,29 +86,29 @@ public class TraversingLines
         if (Vector3.Dot(downDir, iNormalDir) > 0)
         {
             iDir *= -1;
-            iPlaneCenter += iNormalDir * size;
+            iPlaneCenter += iNormalDir * (size - 1);
             iNormalDir *= -1;
         }
         if (Vector3.Dot(downDir, jNormalDir) > 0)
         {
             jDir *= -1;
-            jPlaneCenter += jNormalDir * size;
+            jPlaneCenter += jNormalDir * (size - 1);
             jNormalDir *= -1;
         }
 
         // create start points
         Vector3 horizontalStartPointsDir = Vector3.Cross(iNormalDir, jNormalDir).normalized;
         if (Vector3.Dot(downDir, horizontalStartPointsDir) > 0) horizontalStartPointsDir *= -1;
-        Vector3 horizontalStartPointsOrigin = iPlaneCenter - (jNormalDir + horizontalStartPointsDir) * (size / 2);
-        for (int i = 0; i < 2 * size; i++)
+        Vector3 horizontalStartPointsOrigin = iPlaneCenter - (jNormalDir + horizontalStartPointsDir) * (size / 2 - 0.5f);
+        for (int i = 0; i < 3 * size; i++)
         {
             horizontalStartPoints[i] = CellularVector3D.Round(horizontalStartPointsOrigin + i * horizontalStartPointsDir);
         }
 
         // create the horizontal plane
-        Vector3Int[] iVec = CellularVector3D.Bresenham3D(Vector3Int.zero, CellularVector3D.Round(iDir * size * 1.5f)).GetRange(0, size).ToArray();
-        Vector3Int[] jVec = CellularVector3D.Bresenham3D(Vector3Int.zero, CellularVector3D.Round(jDir * size * 1.5f)).GetRange(0, size).ToArray();
-        for (int i = 0; i < size; i++)
+        Vector3Int[] iVec = CellularVector3D.Bresenham3D(Vector3Int.zero, CellularVector3D.Round(iDir * size * 3)).GetRange(0, 3 * size / 2).ToArray();
+        Vector3Int[] jVec = CellularVector3D.Bresenham3D(Vector3Int.zero, CellularVector3D.Round(jDir * size * 2)).GetRange(0, size).ToArray();
+        for (int i = 0; i < 3 * size / 2; i++)
             for (int j = 0; j < size; j++)
                 horizontal[i, j] = iVec[i] + jVec[j];
 
@@ -125,11 +126,11 @@ public class TraversingLines
             }
         }
         pointIndexOnHorizontalPath.Clear();
-        for (int i = 0; i < size; i++)
+        for (int i = 0; i < 3 * size / 2; i++)
         {
             for (int j = 0; j < size; j++)
             {
-                for (int k = 0; k < 2 * size; k++)
+                for (int k = 0; k < 3 * size; k++)
                 {
                     Vector3Int point = horizontalStartPoints[k] + horizontal[i, j];
                     if (InRange(point)) pointIndexOnHorizontalPath[point] = new int[] {i, j};
@@ -138,7 +139,7 @@ public class TraversingLines
         }
     }
 
-    private static Vector3 GeneratePlaneStartPoints(int size, Vector3 dir, ref Vector3Int[,] startPoints) // returns normal to the start points plane
+    private static Vector3 GeneratePlaneStartPoints(int size, Vector3 dir, ref Vector3Int[,] startPoints, out Vector3 perpendicularNormal) // returns normal to the start points plane
     {
         Vector3 normalDir;
         Vector3 iOvershootDir, jOvershootDir;
@@ -194,6 +195,7 @@ public class TraversingLines
                 startPoints[i, j] = CellularVector3D.Round(planeCenter + (i - size / 2) * iOvershootDir + (j - size / 2) * jOvershootDir);
             }
         }
+        perpendicularNormal = iOvershootDir;
         return normalDir;
     }
 
@@ -203,32 +205,32 @@ public class TraversingLines
         if (Vector3.Angle(Vector3.down, dir) <= 45f)
         {
             normalDir = Vector3.down;
-            planeCenter = new Vector3(size / 2, size - 1, size / 2);
+            planeCenter = new Vector3(size / 2 - 0.5f, size - 1, size / 2 - 0.5f);
         }
         else if (Vector3.Angle(Vector3.up, dir) <= 45f)
         {
             normalDir = Vector3.up;
-            planeCenter = new Vector3(size / 2, 0, size / 2);
+            planeCenter = new Vector3(size / 2 - 0.5f, 0, size / 2 - 0.5f);
         }
         else if (Vector3.Angle(Vector3.left, dir) <= 45f)
         {
             normalDir = Vector3.left;
-            planeCenter = new Vector3(size - 1, size / 2, size / 2);
+            planeCenter = new Vector3(size - 1, size / 2 - 0.5f, size / 2 - 0.5f);
         }
         else if (Vector3.Angle(Vector3.right, dir) <= 45f)
         {
             normalDir = Vector3.right;
-            planeCenter = new Vector3(0, size / 2, size / 2);
+            planeCenter = new Vector3(0, size / 2 - 0.5f, size / 2 - 0.5f);
         }
         else if (Vector3.Angle(Vector3.forward, dir) <= 45f)
         {
             normalDir = Vector3.forward;
-            planeCenter = new Vector3(size / 2, size / 2, 0);
+            planeCenter = new Vector3(size / 2 - 0.5f, size / 2 - 0.5f, 0);
         }
         else
         {
             normalDir = Vector3.back;
-            planeCenter = new Vector3(size / 2, size / 2, size - 1);
+            planeCenter = new Vector3(size / 2 - 0.5f, size / 2 - 0.5f, size - 1);
         }
         return normalDir;
     }
@@ -243,7 +245,7 @@ public class TraversingLines
 
         int[] horizontalIndex = (int[])pointIndexOnHorizontalPath[point];
         int[] horizontalTargetIndex = new int[] {horizontalIndex[0] + iDiff, horizontalIndex[1] + jDiff};
-        if (horizontalTargetIndex[0] < 0 || horizontalTargetIndex[0] >= size) return point;
+        if (horizontalTargetIndex[0] < 0 || horizontalTargetIndex[0] >= 3 * size / 2) return point;
         if (horizontalTargetIndex[1] < 0 || horizontalTargetIndex[1] >= size) return point;
         Vector3Int horizontalVec = horizontal[horizontalTargetIndex[0], horizontalTargetIndex[1]] - horizontal[horizontalIndex[0], horizontalIndex[1]];
 
@@ -548,7 +550,7 @@ public class CellularAutomata3D : MonoBehaviour
 
         // simulate
         traversingLines.ShuffleIndexes();
-        for (int k = 0; k < 2 * size; k++)
+        for (int k = 0; k < 3 * size; k++)
         {
             foreach (int[] index in traversingLines.shuffledIndexes)
             {
@@ -559,10 +561,10 @@ public class CellularAutomata3D : MonoBehaviour
         }
 
         // balance water volume on horizontally adjacent cells and flow sideways if possible
-        for (int k = 0; k < 2 * size; k++)
+        for (int k = 0; k < 3 * size; k++)
         {
             Hashtable visited = new Hashtable();
-            for (int i = 0; i < size; i++)
+            for (int i = 0; i < 3 * size / 2; i++)
             {
                 for (int j = 0; j < size; j++)
                 {
