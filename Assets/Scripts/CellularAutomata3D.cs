@@ -1,8 +1,8 @@
+using JetBrains.Annotations;
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
+using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.AI;
 
 public enum CellType
 {
@@ -322,6 +322,7 @@ public abstract class StaticCell : Cell
 public abstract class DynamicCell : Cell
 {
     public float momentum;
+    public static int terminalVelocity = 3;
 
     public DynamicCell(CellularAutomata3D ca) : base(ca)
     {
@@ -331,7 +332,7 @@ public abstract class DynamicCell : Cell
     public void ApplyForces()
     {
         momentum += ca.gravity.magnitude * (1 / ca.fps);
-        if (momentum < 1) momentum = 1;
+        momentum = Mathf.Clamp(momentum, 1, terminalVelocity);
     }
 }
 
@@ -507,6 +508,7 @@ public class CellularAutomata3D : MonoBehaviour
     public Vector3 gravity; // relative to the local grid
     public TraversingLines traversingLines;
     public MarchingCubesChunk water;
+    public int tasksCount = 16;
 
     public void GenerateEnv()
     {
@@ -529,7 +531,7 @@ public class CellularAutomata3D : MonoBehaviour
                     if (grid[x, y, z] != null) grid[x, y, z].hasBeenSimulated = false;
 
         // update compression
-        for (int i = 0; i < 2 * size; i++)
+        Parallel.For(0, 2 * size, i =>
         {
             for (int j = 0; j < 2 * size; j++)
             {
@@ -546,22 +548,41 @@ public class CellularAutomata3D : MonoBehaviour
                     nextVolume += Fluid.compression;
                 }
             }
-        }
+        });
 
         // simulate
         traversingLines.ShuffleIndexes();
-        for (int k = 0; k < 3 * size; k++)
+        int layers = (3 * size) / DynamicCell.terminalVelocity;
+        if ((3 * size) % DynamicCell.terminalVelocity != 0) layers += 1;
+        int evenLayers = layers % 2 == 0 ? layers / 2 : layers / 2 + 1;
+        int oddLayers = layers / 2;
+        Parallel.For(0, evenLayers, t =>
         {
-            foreach (int[] index in traversingLines.shuffledIndexes)
+            for (int k = 0; k < DynamicCell.terminalVelocity; k++)
             {
-                Vector3Int point = traversingLines.horizontalStartPoints[k] + traversingLines.horizontal[index[0], index[1]];
-                if (!InRange(point)) continue;
-                if (grid[point.x, point.y, point.z] != null) grid[point.x, point.y, point.z].SimulateCell(point);
+                foreach (int[] index in traversingLines.shuffledIndexes)
+                {
+                    Vector3Int point = traversingLines.horizontalStartPoints[k + t * 2 * DynamicCell.terminalVelocity] + traversingLines.horizontal[index[0], index[1]];
+                    if (!InRange(point)) continue;
+                    if (grid[point.x, point.y, point.z] != null) grid[point.x, point.y, point.z].SimulateCell(point);
+                }
             }
-        }
+        });
+        Parallel.For(0, oddLayers, t =>
+        {
+            for (int k = 0; k < DynamicCell.terminalVelocity; k++)
+            {
+                foreach (int[] index in traversingLines.shuffledIndexes)
+                {
+                    Vector3Int point = traversingLines.horizontalStartPoints[k + (t * 2 + 1) * DynamicCell.terminalVelocity] + traversingLines.horizontal[index[0], index[1]];
+                    if (!InRange(point)) continue;
+                    if (grid[point.x, point.y, point.z] != null) grid[point.x, point.y, point.z].SimulateCell(point);
+                }
+            }
+        });
 
         // balance water volume on horizontally adjacent cells and flow sideways if possible
-        for (int k = 0; k < 3 * size; k++)
+        Parallel.For(0, 3 * size, k =>
         {
             Hashtable visited = new Hashtable();
             for (int i = 0; i < 3 * size / 2; i++)
@@ -581,10 +602,10 @@ public class CellularAutomata3D : MonoBehaviour
                     }
                 }
             }
-        }
+        });
 
         // flow up excess volume
-        for (int i = 0; i < 2 * size; i++)
+        Parallel.For(0, 2 * size, i =>
         {
             for (int j = 0; j < 2 * size; j++)
             {
@@ -609,7 +630,7 @@ public class CellularAutomata3D : MonoBehaviour
                     }
                 }
             }
-        }
+        });
     }
 
     private void GetAdjacentCellsRecursive(Hashtable visited, List<Vector3Int> waterBody, List<Vector3Int> silhouette, Vector3Int p)

@@ -1,7 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
+using System.Linq;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
 
 public class Chunk
 {
@@ -9,6 +13,8 @@ public class Chunk
     public float[,,] voxels;
     public int chunkSize;
     public GameObject gameObject;
+    public Vector3[] vertices;
+    public int[] triangles;
 
     public Chunk(int chunkSize, Vector3Int index)
     {
@@ -320,13 +326,22 @@ public class MarchingCubesChunk : MonoBehaviour
 
     public void RenderChunks()
     {
-        foreach (Vector3Int index in needsUpdate.Keys) MarchingCubes(chunks[index.x, index.y, index.z]);
+        List<Chunk> chunksToUpdate = new List<Chunk>(needsUpdate.Count);
+        foreach (Vector3Int index in needsUpdate.Keys) chunksToUpdate.Add(chunks[index.x, index.y, index.z]);
+        Parallel.ForEach(chunksToUpdate, chunk => MarchingCubes(chunk));
+        foreach (Chunk chunk in chunksToUpdate)
+        {
+            Mesh mesh = new Mesh();
+            mesh.vertices = chunk.vertices;
+            mesh.triangles = chunk.triangles;
+            mesh.RecalculateNormals();
+            chunk.gameObject.GetComponent<MeshFilter>().mesh = mesh;
+        }
         needsUpdate.Clear();
     }
 
     private void MarchingCubes(Chunk chunk)
     {
-        Mesh mesh = new Mesh();
         List<Vector3> vertices = new List<Vector3>();
         List<int> triangles = new List<int>();
 
@@ -522,10 +537,8 @@ public class MarchingCubesChunk : MonoBehaviour
             }
         }
 
-        mesh.vertices = vertices.ToArray();
-        mesh.triangles = triangles.ToArray();
-        mesh.RecalculateNormals();
-        chunk.gameObject.GetComponent<MeshFilter>().mesh = mesh;
+        chunk.vertices = vertices.ToArray();
+        chunk.triangles = triangles.ToArray();
     }
 
     private void RenderCube(float[] cube, Vector3 baseCoords, List<Vector3> vertices, List<int> triangles)

@@ -32,7 +32,6 @@ public class GameManager : MonoBehaviour
                 if (ca.gravity != newGravity)
                 {
                     ca.UpdateGravity(newGravity);
-                    Debug.Log("updated gravity");
                 }
             }
 
@@ -109,6 +108,12 @@ public class GameManager : MonoBehaviour
         if (spr.Length < 1) return;
         simsPerRender = int.Parse(spr);
         rendersPerSec = simsPerSec / simsPerRender;
+    }
+
+    public void SetTerminalVelocity(string terminalVelocity)
+    {
+        if (terminalVelocity.Length < 1) return;
+        DynamicCell.terminalVelocity = int.Parse(terminalVelocity);
     }
 
     public void GenerateEnvironment()
