@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public enum CellType
@@ -252,29 +253,40 @@ public class TraversingLines
         return point + verticalVec + horizontalVec;
     }
 
-    public List<Vector3Int> GetVerticalPath(Vector3Int start, int maxLength)
+    public List<Vector3Int> GetVerticalPath(Vector3Int start, int maxLength, out bool outOfBounds)
     {
+        outOfBounds = false;
         List<Vector3Int> path = new List<Vector3Int>();
         int startIndex = (int)pointIndexOnDownPath[start];
         if (maxLength > 0) // up
         {
             int length = Mathf.Min(maxLength, startIndex + 1);
+            if (length < maxLength) outOfBounds = true;
             for (int i = 0; i < length; i++)
             {
                 Vector3Int diff = down[startIndex - i] - down[startIndex];
                 Vector3Int point = start + diff;
-                if (!InRange(point)) break;
+                if (!InRange(point))
+                {
+                    outOfBounds = true;
+                    break;
+                }
                 path.Add(point);
             }
         }
         else // down
         {
             int length = Mathf.Min(-maxLength, size - startIndex);
+            if (length < -maxLength) outOfBounds = true;
             for (int i = 0; i < length; i++)
             {
                 Vector3Int diff = down[startIndex + i] - down[startIndex];
                 Vector3Int point = start + diff;
-                if (!InRange(point)) break;
+                if (!InRange(point))
+                {
+                    outOfBounds = true;
+                    break;
+                }
                 path.Add(point);
             }
         }
@@ -365,17 +377,18 @@ public abstract class Fluid : DynamicCell
         FlowDown(p);
         if (volume > 0) FlowDiagonally(p);
 
-        // remove empty cell
-        if (volume <= 0) ca.grid[p.x, p.y, p.z] = null;
-
         // update marching cubes
         if (prevVolume != volume) ca.water.UpdateVoxel(p, volume <= 0 ? 1 : -volume);
+
+        // remove empty cell
+        if (volume <= 0) ca.grid[p.x, p.y, p.z] = null;
     }
 
     public void FlowDown(Vector3Int start)
     {
         // get the fall path from point start with the current momentum
-        List<Vector3Int> fallPath = ca.traversingLines.GetVerticalPath(start, -(int)momentum - 1);
+        bool outOfBounds = false;
+        List<Vector3Int> fallPath = ca.traversingLines.GetVerticalPath(start, -(int)momentum - 1, out outOfBounds);
         fallPath.RemoveAt(0);
 
         // check the farthest distance the cell can fall down(momentum direction) to using the bresenham fall line
@@ -394,8 +407,18 @@ public abstract class Fluid : DynamicCell
             else break;
         }
 
-        // reset the momentum and deviation if the cell hit the ground, otherwise update the deviation vector
-        if (fallPath.Count < (int)momentum || isFarthestPointFluid || farthestPoint != fallPath.Count - 1) momentum = 0;
+        // flow out of bounds
+        if (outOfBounds && farthestPoint == fallPath.Count - 1)
+        {
+            FlowOutOfBounds();
+            return;
+        }
+
+        // reset the momentum if the cell hit the ground, otherwise update the deviation vector
+        if (fallPath.Count < (int)momentum || isFarthestPointFluid || farthestPoint != fallPath.Count - 1)
+        {
+            momentum = 0;
+        }
 
         // flow down to the cells on the fallPath starting from the farthest fall point
         for (int i = farthestPoint; i >= 0; i--)
@@ -468,6 +491,12 @@ public abstract class Fluid : DynamicCell
         volume -= transfer;
         return transfer;
     }
+
+    public void FlowOutOfBounds()
+    {
+        ca.totalVolume -= volume;
+        volume = 0;
+    }
 }
 
 ////////// cell types
@@ -508,13 +537,14 @@ public class CellularAutomata3D : MonoBehaviour
     public Vector3 gravity; // relative to the local grid
     public TraversingLines traversingLines;
     public MarchingCubesChunk water;
-    public int tasksCount = 16;
+    public float totalVolume;
 
     public void GenerateEnv()
     {
         grid = new Cell[size, size, size];
         traversingLines = new TraversingLines(size);
         UpdateGravity(gravity);
+        totalVolume = 0f;
     }
 
     public void UpdateGravity(Vector3 newDir)
@@ -661,9 +691,9 @@ public class CellularAutomata3D : MonoBehaviour
     private void BalanceAdjacentCells(List<Vector3Int> waterBody, List<Vector3Int> silhouette)
     {
         // get total volume
-        float totalVolume = 0;
-        foreach (Vector3Int p in waterBody) totalVolume += ((Fluid)grid[p.x, p.y, p.z]).volume;
-        float split = totalVolume / waterBody.Count;
+        float bodyVolume = 0;
+        foreach (Vector3Int p in waterBody) bodyVolume += ((Fluid)grid[p.x, p.y, p.z]).volume;
+        float split = bodyVolume / waterBody.Count;
 
         // flow to empty cells on the silhouette
         if (split > Fluid.minFlow)
@@ -671,7 +701,7 @@ public class CellularAutomata3D : MonoBehaviour
             foreach (Vector3Int p in silhouette) grid[p.x, p.y, p.z] = new Water(this);
             waterBody.AddRange(silhouette);
         }
-        split = totalVolume / waterBody.Count;
+        split = bodyVolume / waterBody.Count;
 
         // split total volume between all adjacent cells
         foreach (Vector3Int p in waterBody)

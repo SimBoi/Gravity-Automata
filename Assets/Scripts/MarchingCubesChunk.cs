@@ -340,6 +340,22 @@ public class MarchingCubesChunk : MonoBehaviour
         needsUpdate.Clear();
     }
 
+    public void ReRenderAllChunks()
+    {
+        for (int x = 0; x < chunksSize; x++)
+        {
+            for (int y = 0; y < chunksSize; y++)
+            {
+                for (int z = 0; z < chunksSize; z++)
+                {
+                    Vector3Int index = new Vector3Int(x, y, z);
+                    needsUpdate[index] = true;
+                }
+            }
+        }
+        RenderChunks();
+    }
+
     private void MarchingCubes(Chunk chunk)
     {
         List<Vector3> vertices = new List<Vector3>();

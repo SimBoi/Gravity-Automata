@@ -54,6 +54,8 @@ public class GameManager : MonoBehaviour
             {
                 renderTimer += Time.deltaTime;
             }
+
+            water.ReRenderAllChunks();
         }
     }
 
@@ -125,10 +127,11 @@ public class GameManager : MonoBehaviour
         ca.GenerateEnv();
 
         ApproximateAndFillObjModel();
-        Destroy(loadedObject);
-        loadedObject = null;
         objModel.RenderChunks();
         water.RenderChunks();
+        Destroy(loadedObject);
+        loadedObject = null;
+        Destroy(objModel);
 
         envBounds.layer = 6;
         Destroy(envBounds.GetComponent<MeshRenderer>());
@@ -180,6 +183,7 @@ public class GameManager : MonoBehaviour
                     objModel.UpdateVoxel(new Vector3Int(x, y, z), inside ? -1 : 1);
                     water.UpdateVoxel(new Vector3Int(x, y, z), inside ? 1 : -1);
                     ca.grid[x, y, z] = inside ? (Cell)(new Stone(ca)) : (Cell)(new Water(ca));
+                    if (!inside) ca.totalVolume += 1;
                 }
             }
         }
