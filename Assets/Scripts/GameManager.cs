@@ -115,7 +115,7 @@ public class GameManager : MonoBehaviour
     public void SetTerminalVelocity(string terminalVelocity)
     {
         if (terminalVelocity.Length < 1) return;
-        DynamicCell.terminalVelocity = int.Parse(terminalVelocity);
+        ca.terminalVelocity = int.Parse(terminalVelocity);
     }
 
     public void GenerateEnvironment()
@@ -182,8 +182,8 @@ public class GameManager : MonoBehaviour
                     bool inside = i % 2 == 1;
                     objModel.UpdateVoxel(new Vector3Int(x, y, z), inside ? -1 : 1);
                     water.UpdateVoxel(new Vector3Int(x, y, z), inside ? 1 : -1);
-                    ca.grid[x, y, z] = inside ? (Cell)(new Stone(ca)) : (Cell)(new Water(ca));
-                    if (!inside) ca.totalVolume += 1;
+                    ca.grid[x, y, z].volume = inside ? -1f : 1f;
+                    if (!inside) ca.totalVolume += 1f;
                 }
             }
         }
