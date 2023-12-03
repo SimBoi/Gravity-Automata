@@ -459,6 +459,7 @@ public class CellularAutomata3D : MonoBehaviour
     public Vector3 gravity; // relative to the local grid
     public TraversingLines traversingLines;
     public MarchingCubesChunk water;
+    public float initialTotalVolume;
     public float totalVolume;
 
     public int terminalVelocity = 3;
@@ -472,6 +473,7 @@ public class CellularAutomata3D : MonoBehaviour
         traversingLines = new TraversingLines(size);
         UpdateGravity(gravity);
         totalVolume = 0f;
+        initialTotalVolume = 0f;
     }
 
     public void UpdateGravity(Vector3 newDir)

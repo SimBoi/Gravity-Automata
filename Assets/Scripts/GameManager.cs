@@ -15,10 +15,11 @@ public class GameManager : MonoBehaviour
     public GameObject LOAD;
     public GameObject GENERATE;
     public GameObject SIMULATE;
+    public Text extractionInfo;
     public Text rolloutInfo;
 
     private bool simulate = false;
-    private float simsPerSec, simsPerRender, rendersPerSec;
+    private float simsPerSec = 5, simsPerRender = 1, rendersPerSec = 5;
     private float renderTimer = 0, simulateTimer = 0;
 
     private void Update()
@@ -38,6 +39,7 @@ public class GameManager : MonoBehaviour
             {
                 ca.SimulateStep();
                 simulateTimer -= 1 / simsPerSec;
+                extractionInfo.text = "<b>Extracted: " + 100 * (1 - ca.totalVolume / ca.initialTotalVolume) + "%</b>";
             }
             else
             {
@@ -53,8 +55,6 @@ public class GameManager : MonoBehaviour
             {
                 renderTimer += Time.deltaTime;
             }
-
-            water.ReRenderAllChunks();
         }
     }
 
@@ -119,13 +119,25 @@ public class GameManager : MonoBehaviour
 
     public void GenerateEnvironment()
     {
+        // initialize
         objModel.size = ca.size;
         water.size = ca.size;
         objModel.GenerateChunks();
         water.GenerateChunks();
         ca.GenerateEnv();
 
+        // fill environment
         ApproximateAndFillObjModel();
+        float extraction = ca.size;
+        while (extraction >= ca.size)
+        {
+            float prevTotalVolume = ca.totalVolume;
+            ca.SimulateStep();
+            extraction = prevTotalVolume - ca.totalVolume;
+        }
+        ca.initialTotalVolume = ca.totalVolume;
+
+        // render
         objModel.RenderChunks();
         water.RenderChunks();
 
@@ -133,6 +145,7 @@ public class GameManager : MonoBehaviour
         objModel.transform.parent = envBounds.transform;
         water.transform.parent = envBounds.transform;
 
+        // cleanup
         Destroy(envBounds.GetComponent<MeshRenderer>());
         Destroy(loadedObject);
         Destroy(objModel);
