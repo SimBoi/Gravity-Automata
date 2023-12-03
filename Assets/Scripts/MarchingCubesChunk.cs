@@ -318,9 +318,19 @@ public class MarchingCubesChunk : MonoBehaviour
 
     public void UpdateVoxel(Vector3Int index, float value)
     {
+        // mark the chunk for rerendering
         Vector3Int chunkIndex = GetChunkIndex(index);
         Vector3Int localIndex = new Vector3Int(index.x % chunkSize, index.y % chunkSize, index.z % chunkSize);
         needsUpdate[chunkIndex] = true;
+
+        // mark adjacent chunks for rerendering
+        if (localIndex.x == 0 && chunkIndex.x != 0) needsUpdate[chunkIndex + Vector3Int.left] = true;
+        if (localIndex.x == chunkSize - 1 && chunkIndex.x != chunksSize - 1) needsUpdate[chunkIndex + Vector3Int.right] = true;
+        if (localIndex.y == 0 && chunkIndex.y != 0) needsUpdate[chunkIndex + Vector3Int.down] = true;
+        if (localIndex.y == chunkSize - 1 && chunkIndex.y != chunksSize - 1) needsUpdate[chunkIndex + Vector3Int.up] = true;
+        if (localIndex.z == 0 && chunkIndex.z != 0) needsUpdate[chunkIndex + Vector3Int.back] = true;
+        if (localIndex.z == chunkSize - 1 && chunkIndex.z != chunksSize - 1) needsUpdate[chunkIndex + Vector3Int.forward] = true;
+
         chunks[chunkIndex.x, chunkIndex.y, chunkIndex.z].voxels[localIndex.x, localIndex.y, localIndex.z] = value;
     }
 
