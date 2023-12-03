@@ -128,14 +128,16 @@ public class GameManager : MonoBehaviour
         ApproximateAndFillObjModel();
         objModel.RenderChunks();
         water.RenderChunks();
-        Destroy(loadedObject);
-        loadedObject = null;
-        Destroy(objModel);
 
         envBounds.layer = 6;
-        Destroy(envBounds.GetComponent<MeshRenderer>());
         objModel.transform.parent = envBounds.transform;
         water.transform.parent = envBounds.transform;
+
+        Destroy(envBounds.GetComponent<MeshRenderer>());
+        Destroy(loadedObject);
+        Destroy(objModel);
+        loadedObject = null;
+        objModel = null;
 
         GENERATE.SetActive(false);
         SIMULATE.SetActive(true);

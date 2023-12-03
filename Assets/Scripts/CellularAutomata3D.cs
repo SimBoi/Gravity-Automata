@@ -1,7 +1,10 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class TraversingLines
 {
@@ -227,7 +230,7 @@ public class TraversingLines
         return normalDir;
     }
 
-    // returns the same point if the target point is out of bounds
+    // returns the same point if the target point is out of bounds of the traversing line (not necessarily out of bounds of the matrix)
     public Vector3Int GetNeightborPoint(Vector3Int point, int verticalDiff, int iDiff, int jDiff)
     {
         int downIndex = (int)pointIndexOnDownPath[point];
@@ -551,7 +554,7 @@ public class CellularAutomata3D : MonoBehaviour
                     {
                         List<Vector3Int> waterBody = new List<Vector3Int>();
                         List<Vector3Int> silhouette = new List<Vector3Int>();
-                        GetAdjacentCellsRecursive(visited, waterBody, silhouette, point);
+                        GetAdjacentCellsBfs(visited, waterBody, silhouette, point);
                         if (waterBody.Count > 0) BalanceAdjacentCells(waterBody, silhouette);
                     }
                 }
@@ -585,28 +588,43 @@ public class CellularAutomata3D : MonoBehaviour
         });
     }
 
-    private void GetAdjacentCellsRecursive(Hashtable visited, List<Vector3Int> waterBody, List<Vector3Int> silhouette, Vector3Int p)
+    private void GetAdjacentCellsBfs(Hashtable visited, List<Vector3Int> waterBody, List<Vector3Int> silhouette, Vector3Int s)
     {
-        if (!InRange(p) || visited.ContainsKey(p)) return;
-        visited[p] = true;
+        if (!InRange(s)) return;
 
-        if (grid[p.x, p.y, p.z].volume == 0f)
-        {
-            silhouette.Add(p);
-        }
-        else if (grid[p.x, p.y, p.z].volume > 0f && grid[p.x, p.y, p.z].momentum == 0f)
-        {
-            waterBody.Add(p);
+        LinkedList<Vector3Int> queue = new LinkedList<Vector3Int>();
+        visited[s] = true;
+        queue.AddLast(s);
 
-            Vector3Int adjacent;
-            adjacent = traversingLines.GetNeightborPoint(p, 0, 1, 0);
-            if (p != adjacent) GetAdjacentCellsRecursive(visited, waterBody, silhouette, adjacent);
-            adjacent = traversingLines.GetNeightborPoint(p, 0, -1, 0);
-            if (p != adjacent) GetAdjacentCellsRecursive(visited, waterBody, silhouette, adjacent);
-            adjacent = traversingLines.GetNeightborPoint(p, 0, 0, 1);
-            if (p != adjacent) GetAdjacentCellsRecursive(visited, waterBody, silhouette, adjacent);
-            adjacent = traversingLines.GetNeightborPoint(p, 0, 0, -1);
-            if (p != adjacent) GetAdjacentCellsRecursive(visited, waterBody, silhouette, adjacent);
+        while (queue.Any())
+        {
+            Vector3Int p = queue.First();
+            queue.RemoveFirst();
+
+            if (grid[p.x, p.y, p.z].volume == 0f)
+            {
+                silhouette.Add(p);
+            }
+            else if (grid[p.x, p.y, p.z].volume > 0f && grid[p.x, p.y, p.z].momentum == 0f)
+            {
+                waterBody.Add(p);
+
+                List<Vector3Int> adjacencyList = new List<Vector3Int>
+                {
+                    traversingLines.GetNeightborPoint(p, 0, 1, 0),
+                    traversingLines.GetNeightborPoint(p, 0, -1, 0),
+                    traversingLines.GetNeightborPoint(p, 0, 0, 1),
+                    traversingLines.GetNeightborPoint(p, 0, 0, -1)
+                };
+                foreach (Vector3Int adjacent in adjacencyList)
+                {
+                    if (InRange(adjacent) && adjacent != p && !visited.ContainsKey(adjacent))
+                    {
+                        visited[adjacent] = true;
+                        queue.AddLast(adjacent);
+                    }
+                }
+            }
         }
     }
 
