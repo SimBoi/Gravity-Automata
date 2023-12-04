@@ -531,8 +531,11 @@ public class CellularAutomata3D : MonoBehaviour
         {
             for (int k = 0; k < terminalVelocity; k++)
             {
+                if (k + (t * 2 + 1) * terminalVelocity >= 3 * size) break;
                 foreach (int[] index in traversingLines.shuffledIndexes)
                 {
+                    Debug.Log(k + (t * 2 + 1) * terminalVelocity);
+                    Debug.Log(traversingLines.horizontalStartPoints[k + (t * 2 + 1) * terminalVelocity]);
                     Vector3Int point = traversingLines.horizontalStartPoints[k + (t * 2 + 1) * terminalVelocity] + traversingLines.horizontal[index[0], index[1]];
                     if (!InRange(point)) continue;
                     if (grid[point.x, point.y, point.z].volume > 0f) grid[point.x, point.y, point.z].SimulateCell(this, point);
