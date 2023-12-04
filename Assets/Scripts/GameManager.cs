@@ -11,6 +11,7 @@ public class GameManager : MonoBehaviour
     public GameObject loadedObject = null;
     public MarchingCubesChunk objModel;
     public MarchingCubesChunk water;
+    public RandomRollouts ai = new RandomRollouts();
     public GameObject envBounds;
     public GameObject LOAD;
     public GameObject GENERATE;
@@ -18,9 +19,12 @@ public class GameManager : MonoBehaviour
     public Text extractionInfo;
     public Text rolloutInfo;
 
-    private bool simulate = false;
-    private float simsPerSec = 5, simsPerRender = 1, rendersPerSec = 5;
-    private float renderTimer = 0, simulateTimer = 0;
+    [HideInInspector]
+    public bool simulate = false;
+    [HideInInspector]
+    public float simsPerSec = 5, simsPerRender = 1, rendersPerSec = 5;
+    [HideInInspector]
+    public float renderTimer = 0, simulateTimer = 0;
 
     private void Update()
     {
@@ -159,7 +163,16 @@ public class GameManager : MonoBehaviour
 
     public void CalculateBestStep()
     {
+        ai.beginSearch(this);
+        for (int i = 0; i < 5; i++)
+        {
+            ai.SearchStep();
+        }
 
+        Vector2 bestAction = ai.Decide();
+        envBounds.transform.Rotate(bestAction.x, bestAction.y, 0, Space.World);
+        Vector3 newGravity = envBounds.transform.InverseTransformDirection(Vector3.down).normalized * 10;
+        ca.UpdateGravity(newGravity);
     }
 
     public void ResetScene()
