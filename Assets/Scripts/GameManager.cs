@@ -11,7 +11,7 @@ public class GameManager : MonoBehaviour
     public GameObject loadedObject = null;
     public MarchingCubesChunk objModel;
     public MarchingCubesChunk water;
-    public RandomRollouts ai = new RandomRollouts();
+    public MCTS ai = new MCTS();
     public GameObject envBounds;
     public GameObject LOAD;
     public GameObject GENERATE;
@@ -164,13 +164,14 @@ public class GameManager : MonoBehaviour
     public void CalculateBestStep()
     {
         ai.beginSearch(this);
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 10; i++)
         {
             ai.SearchStep();
         }
 
         Vector2 bestAction = ai.Decide();
-        envBounds.transform.Rotate(bestAction.x, bestAction.y, 0, Space.World);
+        envBounds.transform.Rotate(0, bestAction.y, 0, Space.World);
+        envBounds.transform.Rotate(bestAction.x, 0, 0, Space.World);
         Vector3 newGravity = envBounds.transform.InverseTransformDirection(Vector3.down).normalized * 10;
         ca.UpdateGravity(newGravity);
     }
