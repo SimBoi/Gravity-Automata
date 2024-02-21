@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
-using static UnityEngine.UIElements.UxmlAttributeDescription;
 
 public struct CellularAutomataSnapshot
 {
@@ -110,29 +108,6 @@ public class RandomRollouts : AI
         theta *= Mathf.Rad2Deg;
         phi *= Mathf.Rad2Deg;
         return new Vector2(theta, phi);
-    }
-}
-
-public class IntelligentRollouts : AI
-{
-    public void beginSearch(GameManager gameManager)
-    {
-
-    }
-
-    public void SearchStep()
-    {
-
-    }
-
-    public Vector2 PeakDecision()
-    {
-        return Vector2.zero;
-    }
-
-    public Vector2 Decide()
-    {
-        return Vector2.zero;
     }
 }
 

@@ -74,18 +74,18 @@ public class GameManager : MonoBehaviour
         {
             if (child.GetComponent<MeshFilter>())
             {
-                child.gameObject.AddComponent<MeshCollider>();
+                //child.gameObject.AddComponent<MeshCollider>();
                 child.gameObject.layer = 7;
             }
         }
 
-        Bounds bounds = new Bounds(loadedObject.transform.position, Vector3.zero);
-        foreach (Renderer r in loadedObject.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(r.bounds);
-        float scale = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-        loadedObject.transform.localScale *= 0.9f * ca.size / scale;
-        loadedObject.AddComponent<BoxCollider>();
-        loadedObject.GetComponent<BoxCollider>().size = bounds.size;
-        loadedObject.GetComponent<BoxCollider>().center = bounds.center;
+        // Bounds bounds = new Bounds(loadedObject.transform.position, Vector3.zero);
+        // foreach (Renderer r in loadedObject.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(r.bounds);
+        // float scale = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+        // loadedObject.transform.localScale *= 0.9f * ca.size / scale;
+        // loadedObject.AddComponent<BoxCollider>();
+        // loadedObject.GetComponent<BoxCollider>().size = bounds.size;
+        // loadedObject.GetComponent<BoxCollider>().center = bounds.center;
 
         LOAD.SetActive(false);
         GENERATE.SetActive(true);

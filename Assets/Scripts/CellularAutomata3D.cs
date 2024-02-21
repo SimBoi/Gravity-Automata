@@ -132,6 +132,11 @@ public class TraversingLines
                 }
             }
         }
+
+        if (pointIndexOnDownPath.Count != size * size * size)
+            Debug.LogError("Error: not all points are in the range of the vertical traversing lines");
+        if (pointIndexOnHorizontalPath.Count != size * size * size)
+            Debug.LogError("Error: not all points are in the range of the horizontal traversing lines");
     }
 
     private static Vector3 GeneratePlaneStartPoints(int size, Vector3 dir, ref Vector3Int[,] startPoints, out Vector3 perpendicularNormal) // returns normal to the start points plane
@@ -139,47 +144,62 @@ public class TraversingLines
         Vector3 normalDir;
         Vector3 iOvershootDir, jOvershootDir;
         Vector3 planeCenter;
-        if (Vector3.Angle(Vector3.down, dir) <= 45f)
+
+        // find the face with the inside normal closest to the direction of the gravity
+        List<float> angles = new List<float>() {
+            Vector3.Angle(Vector3.down, dir),
+            Vector3.Angle(Vector3.up, dir),
+            Vector3.Angle(Vector3.left, dir),
+            Vector3.Angle(Vector3.right, dir),
+            Vector3.Angle(Vector3.back, dir),
+            Vector3.Angle(Vector3.forward, dir)
+        };
+        int minIndex = 0;
+        for (int i = 1; i < angles.Count; i++)
+            if (angles[i] < angles[minIndex])
+                minIndex = i;
+
+        if (minIndex == 0)
         {
             normalDir = Vector3.down;
             iOvershootDir = Vector3.right;
             jOvershootDir = Vector3.forward;
             planeCenter = new Vector3(size / 2, size - 1, size / 2);
         }
-        else if (Vector3.Angle(Vector3.up, dir) <= 45f)
+        else if (minIndex == 1)
         {
             normalDir = Vector3.up;
             iOvershootDir = Vector3.right;
             jOvershootDir = Vector3.forward;
             planeCenter = new Vector3(size / 2, 0, size / 2);
         }
-        else if (Vector3.Angle(Vector3.left, dir) <= 45f)
+        else if (minIndex == 2)
         {
             normalDir = Vector3.left;
             iOvershootDir = Vector3.up;
             jOvershootDir = Vector3.forward;
             planeCenter = new Vector3(size - 1, size / 2, size / 2);
         }
-        else if (Vector3.Angle(Vector3.right, dir) <= 45f)
+        else if (minIndex == 3)
         {
             normalDir = Vector3.right;
             iOvershootDir = Vector3.up;
             jOvershootDir = Vector3.forward;
             planeCenter = new Vector3(0, size / 2, size / 2);
         }
-        else if (Vector3.Angle(Vector3.forward, dir) <= 45f)
-        {
-            normalDir = Vector3.forward;
-            iOvershootDir = Vector3.up;
-            jOvershootDir = Vector3.right;
-            planeCenter = new Vector3(size / 2, size / 2, 0);
-        }
-        else
+        else if (minIndex == 4)
         {
             normalDir = Vector3.back;
             iOvershootDir = Vector3.up;
             jOvershootDir = Vector3.right;
             planeCenter = new Vector3(size / 2, size / 2, size - 1);
+        }
+        else
+        {
+            normalDir = Vector3.forward;
+            iOvershootDir = Vector3.up;
+            jOvershootDir = Vector3.right;
+            planeCenter = new Vector3(size / 2, size / 2, 0);
         }
         if (Vector3.Dot(iOvershootDir, dir) > 0) iOvershootDir *= -1;
         if (Vector3.Dot(jOvershootDir, dir) > 0) jOvershootDir *= -1;
@@ -197,36 +217,51 @@ public class TraversingLines
     private static Vector3 GetPlaneNormal(int size, Vector3 dir, out Vector3 planeCenter)
     {
         Vector3 normalDir;
-        if (Vector3.Angle(Vector3.down, dir) <= 45f)
+
+        List<float> angles = new List<float>() {
+            Vector3.Angle(Vector3.down, dir),
+            Vector3.Angle(Vector3.up, dir),
+            Vector3.Angle(Vector3.left, dir),
+            Vector3.Angle(Vector3.right, dir),
+            Vector3.Angle(Vector3.back, dir),
+            Vector3.Angle(Vector3.forward, dir)
+        };
+        int minIndex = 0;
+        for (int i = 1; i < angles.Count; i++)
+            if (angles[i] < angles[minIndex])
+                minIndex = i;
+
+        if (minIndex == 0)
         {
             normalDir = Vector3.down;
             planeCenter = new Vector3(size / 2 - 0.5f, size - 1, size / 2 - 0.5f);
         }
-        else if (Vector3.Angle(Vector3.up, dir) <= 45f)
+        else if (minIndex == 1)
         {
             normalDir = Vector3.up;
             planeCenter = new Vector3(size / 2 - 0.5f, 0, size / 2 - 0.5f);
         }
-        else if (Vector3.Angle(Vector3.left, dir) <= 45f)
+        else if (minIndex == 2)
         {
             normalDir = Vector3.left;
             planeCenter = new Vector3(size - 1, size / 2 - 0.5f, size / 2 - 0.5f);
         }
-        else if (Vector3.Angle(Vector3.right, dir) <= 45f)
+        else if (minIndex == 3)
         {
             normalDir = Vector3.right;
             planeCenter = new Vector3(0, size / 2 - 0.5f, size / 2 - 0.5f);
         }
-        else if (Vector3.Angle(Vector3.forward, dir) <= 45f)
-        {
-            normalDir = Vector3.forward;
-            planeCenter = new Vector3(size / 2 - 0.5f, size / 2 - 0.5f, 0);
-        }
-        else
+        else if (minIndex == 4)
         {
             normalDir = Vector3.back;
             planeCenter = new Vector3(size / 2 - 0.5f, size / 2 - 0.5f, size - 1);
         }
+        else
+        {
+            normalDir = Vector3.forward;
+            planeCenter = new Vector3(size / 2 - 0.5f, size / 2 - 0.5f, 0);
+        }
+
         return normalDir;
     }
 
