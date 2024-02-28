@@ -162,14 +162,15 @@ public class MCTS : AI
     public float shouldExpandNewChildUCTThreshold = 0.5f;
 
     // exploration vs exploitation
-    public float explorationWeight = Mathf.Sqrt(2);
+    public float selectionExplorationWeight = Mathf.Sqrt(2);
+    public float expansionExplorationWeight = 0.3f * Mathf.Sqrt(2);
 
     // evaluation
-    public float weightDepth = 0.4f;
-    public float weightExtractedWater = 0.2f;
-    public float weightRollout = 0.2f;
+    public float weightDepth = 0.1f;
+    public float weightExtractedWater = 0.3f;
+    public float weightRollout = 0.3f;
     public float weightAverageChildren = 0.1f;
-    public float weightMaxChild = 0.1f;
+    public float weightMaxChild = 0.2f;
 
     //////////////////////////////// Inisialization and main loop ////////////////////////////////
 
@@ -192,6 +193,8 @@ public class MCTS : AI
 
         // Use the result of the rollout to update the evaluation of the new node and its ancestors
         BackPropagate(node, rolloutResult);
+
+        Debug.Log("selected node: eval=" + node.eval + ", depth=" + node.depth + ", children=" + node.children.Count + "\nrollout result: depth=" + rolloutResult.depth + ", extracted=" + rolloutResult.extractedWaterPercentage);
     }
 
     //////////////////////////////// Selection Phase ////////////////////////////////
@@ -224,7 +227,7 @@ public class MCTS : AI
 
             foreach (var child in parent.children)
             {
-                float uctValue = UCT(child);
+                float uctValue = UCT(child, selectionExplorationWeight);
                 if (uctValue > maxUCTValue)
                 {
                     maxUCTValue = uctValue;
@@ -243,14 +246,14 @@ public class MCTS : AI
 
         // Calculate the average UCT value of existing children
         float averageUCTValue = 0;
-        foreach (var child in parent.children) averageUCTValue += UCT(child);
+        foreach (var child in parent.children) averageUCTValue += UCT(child, expansionExplorationWeight);
         averageUCTValue /= parent.children.Count;
 
         // Decide whether to expand a new child based on the average UCT value
         return averageUCTValue < shouldExpandNewChildUCTThreshold;
     }
 
-    private float UCT(MCTSNode node)
+    private float UCT(MCTSNode node, float explorationWeight)
     {
         return node.eval + explorationWeight * Mathf.Sqrt(Mathf.Log(node.parent.visits, Mathf.Exp(1)) / node.visits);
     }
@@ -351,14 +354,18 @@ public class MCTS : AI
 
         // Use the evaluation of child nodes
         float averageChildrenValue = 0.0f;
-        float maxChildValue = float.MinValue;
-        foreach (var child in node.children)
+        float maxChildValue = 0.0f;
+        if (node.children.Count > 0)
         {
-            float childValue = child.eval;
-            averageChildrenValue += childValue;
-            if (childValue > maxChildValue) maxChildValue = childValue;
+            maxChildValue = float.MinValue;
+            foreach (var child in node.children)
+            {
+                float childValue = child.eval;
+                averageChildrenValue += childValue;
+                if (childValue > maxChildValue) maxChildValue = childValue;
+            }
+            averageChildrenValue = averageChildrenValue / node.children.Count;
         }
-        averageChildrenValue = node.children.Count > 0 ? averageChildrenValue / node.children.Count : 0;
 
         // Use the best rollout result
         float rolloutFactor = node.bestRollout.extractedWaterPercentage * (1.0f - (float)node.bestRollout.depth / maxDepth);
