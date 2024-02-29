@@ -154,25 +154,24 @@ public class MCTS : AI
 {
     public GameManager gameManager;
     private MCTSNode rootNode;
-    private int maxDepth = 5;
+    private int maxDepth = 6;
 
     //////////////////////////////// weights and parameters for tuning ////////////////////////////////
 
-    // should expand new child
-    public float shouldExpandNewChildUCTThreshold = 0.5f;
-
     // exploration vs exploitation
-    public float selectionExplorationWeight = Mathf.Sqrt(2);
-    public float expansionExplorationWeight = 0.3f * Mathf.Sqrt(2);
+    public float shouldExpandNewChildUCTThreshold = 0.5f; // weight in range [0, 1]
+    public float selectionExplorationWeight = Mathf.Sqrt(2); // weight in range {0, 0.2, 0.4, 0.6, 0.8, 1, 1.4, 1.8, 2.2, 3, 4, 5, 6, 8, 10, 14, 18, 25, 50, 75, 100, 200, 500, 1000, 5000, 10000}
+    public float expansionExplorationWeight = 0.3f * Mathf.Sqrt(2); // weight in range {0, 0.2, 0.4, 0.6, 0.8, 1, 1.4, 1.8, 2.2, 3, 4, 5, 6, 8, 10, 14, 18, 25, 50, 75, 100, 200, 500, 1000, 5000, 10000}
+    public float expansionDepthWeight = 0.5f; // weight in range {0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.9, 1.2, 1.5, 1.9, 2.5}
 
-    // evaluation
-    public float weightDepth = 0.1f;
-    public float weightExtractedWater = 0.3f;
-    public float weightRollout = 0.3f;
-    public float weightAverageChildren = 0.1f;
-    public float weightMaxChild = 0.2f;
+    // evaluation, weights should sum to 1
+    public float evalWeightDepth = 0.1f;
+    public float evalWeightExtractedWater = 0.3f;
+    public float evalWeightRollout = 0.3f;
+    public float evalWeightAverageChildren = 0.1f;
+    public float evalWeightMaxChild = 0.2f;
 
-    //////////////////////////////// Inisialization and main loop ////////////////////////////////
+    //////////////////////////////// Initialization and main loop ////////////////////////////////
 
     public void beginSearch(GameManager gameManager)
     {
@@ -249,13 +248,18 @@ public class MCTS : AI
         foreach (var child in parent.children) averageUCTValue += UCT(child, expansionExplorationWeight);
         averageUCTValue /= parent.children.Count;
 
-        // Decide whether to expand a new child based on the average UCT value
-        return averageUCTValue < shouldExpandNewChildUCTThreshold;
+        // Calculate the depth factor, encouraging expansion of nodes at shallower depths
+        float depthFactor = expansionDepthWeight * (maxDepth - parent.depth) / maxDepth;
+
+        // Decide based on the average UCT value and the depth of the parent node
+        return (averageUCTValue - depthFactor) < shouldExpandNewChildUCTThreshold;
     }
 
     private float UCT(MCTSNode node, float explorationWeight)
     {
-        return node.eval + explorationWeight * Mathf.Sqrt(Mathf.Log(node.parent.visits, Mathf.Exp(1)) / node.visits);
+        float value = node.eval + explorationWeight * Mathf.Sqrt(Mathf.Log(node.parent.visits, Mathf.Exp(1)) / node.visits);
+        float maxValue = 1 + explorationWeight * Mathf.Sqrt(Mathf.Log(node.parent.visits, Mathf.Exp(1)));
+        return value / maxValue; // normalize to [0, 1]
     }
 
     //////////////////////////////// Expansion Phase ////////////////////////////////
@@ -269,8 +273,10 @@ public class MCTS : AI
         RolloutStep(5);
 
         // create a child node for the resulting state
-        MCTSNode child = new MCTSNode(gameManager, parent);
-        child.depth = parent.depth + 1;
+        MCTSNode child = new(gameManager, parent)
+        {
+            depth = parent.depth + 1
+        };
         parent.children.Add(child);
         return child;
     }
@@ -364,17 +370,17 @@ public class MCTS : AI
                 averageChildrenValue += childValue;
                 if (childValue > maxChildValue) maxChildValue = childValue;
             }
-            averageChildrenValue = averageChildrenValue / node.children.Count;
+            averageChildrenValue /= node.children.Count;
         }
 
         // Use the best rollout result
         float rolloutFactor = node.bestRollout.extractedWaterPercentage * (1.0f - (float)node.bestRollout.depth / maxDepth);
 
-        node.eval = weightDepth * depthScore +
-                    weightExtractedWater * extractedWaterPercentage +
-                    weightRollout * rolloutFactor +
-                    weightAverageChildren * averageChildrenValue +
-                    weightMaxChild * maxChildValue;
+        node.eval = evalWeightDepth * depthScore +
+                    evalWeightExtractedWater * extractedWaterPercentage +
+                    evalWeightRollout * rolloutFactor +
+                    evalWeightAverageChildren * averageChildrenValue +
+                    evalWeightMaxChild * maxChildValue;
 
         return node.eval;
     }
