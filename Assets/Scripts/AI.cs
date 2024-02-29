@@ -270,7 +270,7 @@ public class MCTS : AI
         parent.caSnapshot.RestoreSnapshot(gameManager, false);
 
         // Rollout the game for one step
-        RolloutStep(5);
+        RolloutStep(10);
 
         // create a child node for the resulting state
         MCTSNode child = new(gameManager, parent)
@@ -292,7 +292,7 @@ public class MCTS : AI
         int depth;
         for (depth = leafNode.depth; depth < maxDepth; depth++)
         {
-            RolloutStep(5);
+            RolloutStep(10);
 
             // Finish the rollout if the remaining water is less than 5%
             if (gameManager.ca.totalVolume / gameManager.ca.initialTotalVolume < 0.05f) break;

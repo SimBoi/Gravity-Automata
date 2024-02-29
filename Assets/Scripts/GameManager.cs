@@ -11,7 +11,7 @@ public class GameManager : MonoBehaviour
     public GameObject loadedObject = null;
     public MarchingCubesChunk objModel;
     public MarchingCubesChunk water;
-    public MCTS ai = new MCTS();
+    public MCTS ai;
     public GameObject envBounds;
     public GameObject LOAD;
     public GameObject GENERATE;
@@ -25,6 +25,19 @@ public class GameManager : MonoBehaviour
     public float simsPerSec = 5, simsPerRender = 1, rendersPerSec = 5;
     [HideInInspector]
     public float renderTimer = 0, simulateTimer = 0;
+
+    public void Start()
+    {
+        LoadObj();
+
+        SetSize("24");
+        SetSimulationsPerSec("2");
+        SetSimulationsPerRender("1");
+        SetTerminalVelocity("5");
+        GenerateEnvironment();
+
+        CalculateBestStep();
+    }
 
     private void Update()
     {
@@ -52,7 +65,7 @@ public class GameManager : MonoBehaviour
 
             if (renderTimer >= 1 / rendersPerSec)
             {
-                water.RenderChunks();
+                // water.RenderChunks();
                 renderTimer -= 1 / rendersPerSec;
             }
             else
@@ -64,10 +77,10 @@ public class GameManager : MonoBehaviour
 
     public void LoadObj()
     {
-        var extensions = new[] { new ExtensionFilter("Obj Files", "obj") };
-        var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, true);
-        loadedObject = new OBJLoader().Load(paths[0]);
-        loadedObject.transform.localScale = Vector3.one;
+        // var extensions = new[] { new ExtensionFilter("Obj Files", "obj") };
+        // var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, true);
+        // loadedObject = new OBJLoader().Load(paths[0]);
+        // loadedObject.transform.localScale = Vector3.one;
         loadedObject.layer = 6;
 
         foreach (Transform child in loadedObject.GetComponentsInChildren<Transform>())
@@ -142,8 +155,8 @@ public class GameManager : MonoBehaviour
         ca.initialTotalVolume = ca.totalVolume;
 
         // render
-        objModel.RenderChunks();
-        water.RenderChunks();
+        // objModel.RenderChunks();
+        // water.RenderChunks();
 
         envBounds.layer = 6;
         objModel.transform.parent = envBounds.transform;
@@ -163,7 +176,42 @@ public class GameManager : MonoBehaviour
 
     public void CalculateBestStep()
     {
+        float[] range1 = {0f, 0.2f, 0.4f, 0.6f, 0.8f, 1f, 1.4f, 1.8f, 2.2f, 3f, 4f, 5f, 6f, 8f, 10f, 14f, 18f, 25f, 50f, 75f, 100f, 200f, 500f, 1000f, 5000f, 10000f};
+        float[] range2 = {0f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.7f, 0.9f, 1.2f, 1.5f, 1.9f, 2.5f};
+
+        float shouldExpandNewChildUCTThreshold = Random.Range(0f, 1f); // weight in range [0, 1]
+        float selectionExplorationWeight = range1[Random.Range(0, range1.Length)]; // weight in range1
+        float expansionExplorationWeight = range1[Random.Range(0, range1.Length)]; // weight in range1
+        float expansionDepthWeight = range2[Random.Range(0, range2.Length)]; // weight in range2
+
+        // evaluation, weights should sum to 1
+        float evalWeightDepth = Random.Range(0f, 1f);
+        float evalWeightExtractedWater = Random.Range(0f, 1f);
+        float evalWeightRollout = Random.Range(0f, 1f);
+        float evalWeightAverageChildren = Random.Range(0f, 1f);
+        float evalWeightMaxChild = Random.Range(0f, 1f);
+        // normalize weights to sum to 1
+        float sum = evalWeightDepth + evalWeightExtractedWater + evalWeightRollout + evalWeightAverageChildren + evalWeightMaxChild;
+        evalWeightDepth /= sum;
+        evalWeightExtractedWater /= sum;
+        evalWeightRollout /= sum;
+        evalWeightAverageChildren /= sum;
+        evalWeightMaxChild /= sum;
+
+        ai = new MCTS()
+        {
+            shouldExpandNewChildUCTThreshold = shouldExpandNewChildUCTThreshold,
+            selectionExplorationWeight = selectionExplorationWeight,
+            expansionExplorationWeight = expansionExplorationWeight,
+            expansionDepthWeight = expansionDepthWeight,
+            evalWeightDepth = evalWeightDepth,
+            evalWeightExtractedWater = evalWeightExtractedWater,
+            evalWeightRollout = evalWeightRollout,
+            evalWeightAverageChildren = evalWeightAverageChildren,
+            evalWeightMaxChild = evalWeightMaxChild
+        };
         ai.beginSearch(this);
+
         for (int i = 0; i < 100; i++)
         {
             ai.SearchStep();
