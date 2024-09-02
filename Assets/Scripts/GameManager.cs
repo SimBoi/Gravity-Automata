@@ -28,10 +28,10 @@ public class HyperparameterSetArray
 
 public class GameManager : MonoBehaviour
 {
-    public CellularAutomata3D ca;
+    public CellularAutomata2D ca;
     public GameObject loadedObject = null;
-    public MarchingCubesChunk objModel;
-    public MarchingCubesChunk water;
+    public Grid2D objModel;
+    public Grid2D water;
     public MCTS ai;
     public GameObject envBounds;
     public GameObject LOAD;
