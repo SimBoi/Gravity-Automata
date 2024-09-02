@@ -32,7 +32,7 @@ public class GameManager : MonoBehaviour
     public GameObject loadedObject = null;
     public MarchingCubesChunk objModel;
     public MarchingCubesChunk water;
-    public RandomRollouts ai;
+    public MCTS ai;
     public GameObject envBounds;
     public GameObject LOAD;
     public GameObject GENERATE;
@@ -47,19 +47,6 @@ public class GameManager : MonoBehaviour
     public float simsPerSec = 5, simsPerRender = 1, rendersPerSec = 5;
     [HideInInspector]
     public float renderTimer = 0, simulateTimer = 0;
-
-    public void Start()
-    {
-        LoadObj();
-
-        SetSize("32");
-        SetSimulationsPerSec("2");
-        SetSimulationsPerRender("1");
-        SetTerminalVelocity("5");
-        GenerateEnvironment();
-
-        CalculateBestStep();
-    }
 
     private void Update()
     {
@@ -109,28 +96,28 @@ public class GameManager : MonoBehaviour
 
     public void LoadObj()
     {
-        // var extensions = new[] { new ExtensionFilter("Obj Files", "obj") };
-        // var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, true);
-        // loadedObject = new OBJLoader().Load(paths[0]);
-        // loadedObject.transform.localScale = Vector3.one;
+        var extensions = new[] { new ExtensionFilter("Obj Files", "obj") };
+        var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, true);
+        loadedObject = new OBJLoader().Load(paths[0]);
+        loadedObject.transform.localScale = Vector3.one;
         loadedObject.layer = 6;
 
         foreach (Transform child in loadedObject.GetComponentsInChildren<Transform>())
         {
             if (child.GetComponent<MeshFilter>())
             {
-                //child.gameObject.AddComponent<MeshCollider>();
+                child.gameObject.AddComponent<MeshCollider>();
                 child.gameObject.layer = 7;
             }
         }
 
-        // Bounds bounds = new Bounds(loadedObject.transform.position, Vector3.zero);
-        // foreach (Renderer r in loadedObject.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(r.bounds);
-        // float scale = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-        // loadedObject.transform.localScale *= 0.9f * ca.size / scale;
-        // loadedObject.AddComponent<BoxCollider>();
-        // loadedObject.GetComponent<BoxCollider>().size = bounds.size;
-        // loadedObject.GetComponent<BoxCollider>().center = bounds.center;
+        Bounds bounds = new Bounds(loadedObject.transform.position, Vector3.zero);
+        foreach (Renderer r in loadedObject.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(r.bounds);
+        float scale = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+        loadedObject.transform.localScale *= 0.9f * ca.size / scale;
+        loadedObject.AddComponent<BoxCollider>();
+        loadedObject.GetComponent<BoxCollider>().size = bounds.size;
+        loadedObject.GetComponent<BoxCollider>().center = bounds.center;
 
         LOAD.SetActive(false);
         GENERATE.SetActive(true);
@@ -216,115 +203,30 @@ public class GameManager : MonoBehaviour
 
     public void CalculateBestStep()
     {
-        int[] sets = { 1 };
-        foreach (int iteration in sets)
+        ai = new MCTS()
         {
-            /*float[] range1 = { 0f, 0.2f, 0.4f, 0.6f, 0.8f, 1f, 1.4f, 1.8f, 2.2f, 3f, 4f, 5f, 6f, 8f, 10f, 14f, 18f, 25f, 50f, 75f, 100f, 200f, 500f, 1000f, 5000f, 10000f };
-            float[] range2 = { 0f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.7f, 0.9f, 1.2f, 1.5f, 1.9f, 2.5f };
-
-            float shouldExpandNewChildUCTThreshold = Random.Range(0f, 1f); // weight in range [0, 1]
-            float selectionExplorationWeight = range1[Random.Range(0, range1.Length)]; // weight in range1
-            float expansionExplorationWeight = range1[Random.Range(0, range1.Length)]; // weight in range1
-            float expansionDepthWeight = range2[Random.Range(0, range2.Length)]; // weight in range2
-
-            // evaluation, weights should sum to 1
-            float evalWeightDepth = Random.Range(0f, 1f);
-            float evalWeightExtractedWater = Random.Range(0f, 1f);
-            float evalWeightRollout = Random.Range(0f, 1f);
-            float evalWeightAverageChildren = Random.Range(0f, 1f);
-            float evalWeightMaxChild = Random.Range(0f, 1f);
-            // normalize weights to sum to 1
-            float sum = evalWeightDepth + evalWeightExtractedWater + evalWeightRollout + evalWeightAverageChildren + evalWeightMaxChild;
-            evalWeightDepth /= sum;
-            evalWeightExtractedWater /= sum;
-            evalWeightRollout /= sum;
-            evalWeightAverageChildren /= sum;
-            evalWeightMaxChild /= sum;*/
-
-            /*HyperparameterSetArray hyperparameterSets = JsonUtility.FromJson<HyperparameterSetArray>(hyperparametersJson.text);
-            HyperparameterSet hyperparameters = hyperparameterSets.sets[iteration];
-            float shouldExpandNewChildUCTThreshold = hyperparameters.shouldExpandNewChildUCTThreshold;
-            float selectionExplorationWeight = hyperparameters.selectionExplorationWeight;
-            float expansionExplorationWeight = hyperparameters.expansionExplorationWeight;
-            float expansionDepthWeight = hyperparameters.expansionDepthWeight;
-            float evalWeightDepth = hyperparameters.evalWeightDepth;
-            float evalWeightExtractedWater = hyperparameters.evalWeightExtractedWater;
-            float evalWeightRollout = hyperparameters.evalWeightRollout;
-            float evalWeightAverageChildren = hyperparameters.evalWeightAverageChildren;
-            float evalWeightMaxChild = hyperparameters.evalWeightMaxChild;
-
-            ai = new MCTS()
-            {
-                shouldExpandNewChildUCTThreshold = shouldExpandNewChildUCTThreshold,
-                selectionExplorationWeight = selectionExplorationWeight,
-                expansionExplorationWeight = expansionExplorationWeight,
-                expansionDepthWeight = expansionDepthWeight,
-                evalWeightDepth = evalWeightDepth,
-                evalWeightExtractedWater = evalWeightExtractedWater,
-                evalWeightRollout = evalWeightRollout,
-                evalWeightAverageChildren = evalWeightAverageChildren,
-                evalWeightMaxChild = evalWeightMaxChild
-            };*/
-            ai = new RandomRollouts();
-            ai.beginSearch(this);
-
-            string path = Application.dataPath + $"/Results/random-1.txt";
-            /*string path = Application.dataPath + $"/Results/{iteration}.txt";
-            System.IO.File.WriteAllText(path,
-                "shouldExpandNewChildUCTThreshold=" + shouldExpandNewChildUCTThreshold +
-                "," + "selectionExplorationWeight=" + selectionExplorationWeight +
-                "," + "expansionExplorationWeight=" + expansionExplorationWeight +
-                "," + "expansionDepthWeight=" + expansionDepthWeight +
-                "," + "evalWeightDepth=" + evalWeightDepth +
-                "," + "evalWeightExtractedWater=" + evalWeightExtractedWater +
-                "," + "evalWeightRollout=" + evalWeightRollout +
-                "," + "evalWeightAverageChildren=" + evalWeightAverageChildren +
-                "," + "evalWeightMaxChild=" + evalWeightMaxChild +
-                "\n"
-            );*/
-
-            for (int i = 0; i < 1000; i++)
-            {
-                ai.SearchStep();
-
-                // write the current search tree to a new line in the file
-                System.IO.File.AppendAllText(path, ai.bestPathLength.ToString() + " - " + ai.bestPathExtractedWater.ToString() + "\n");
-                /*string treeString = treeToString(ai.rootNode) + "\n";
-                System.IO.File.AppendAllText(path, treeString);
-
-                // check the search tree performance after 50 iterations
-                if (i == 50)
-                {
-                    // check if the search tree is exploiting created nodes
-                    bool exploited = false;
-                    foreach (MCTSNode child in ai.rootNode.children)
-                    {
-                        if (child.visits > 1)
-                        {
-                            exploited = true;
-                            break;
-                        }
-                    }
-                    // check if the search tree is exploring new nodes at depth 1
-                    bool explored = ai.rootNode.children.Count >= 5;
-
-                    if (!exploited || !explored)
-                    {
-                        // delete the text file and continue to the next hyperparameter set
-                        System.IO.File.Delete(path);
-                        break;
-                    }
-                }*/
-            }
-            //ai.rootNode.caSnapshot.RestoreSnapshot(this, true);
-            ai.rootSnapshot.RestoreSnapshot(this, true);
-
-            // Vector2 bestAction = ai.Decide();
-            // envBounds.transform.Rotate(0, bestAction.y, 0, Space.World);
-            // envBounds.transform.Rotate(bestAction.x, 0, 0, Space.World);
-            // Vector3 newGravity = envBounds.transform.InverseTransformDirection(Vector3.down).normalized * 10;
-            // ca.UpdateGravity(newGravity);
+            shouldExpandNewChildUCTThreshold = 0.7152f,
+            selectionExplorationWeight = 0.2f,
+            expansionExplorationWeight = 100,
+            expansionDepthWeight = 0.1f,
+            evalWeightDepth = 0.0494f,
+            evalWeightExtractedWater = 0.2990f,
+            evalWeightRollout = 0.1948f,
+            evalWeightAverageChildren = 0.2777f,
+            evalWeightMaxChild = 0.1791f
+        };
+        ai.beginSearch(this);
+        for (int i = 0; i < 1000; i++)
+        {
+            ai.SearchStep();
         }
+        ai.rootNode.caSnapshot.RestoreSnapshot(this, true);
+
+        Vector2 bestAction = ai.Decide();
+        envBounds.transform.Rotate(0, bestAction.y, 0, Space.World);
+        envBounds.transform.Rotate(bestAction.x, 0, 0, Space.World);
+        Vector3 newGravity = envBounds.transform.InverseTransformDirection(Vector3.down).normalized * 10;
+        ca.UpdateGravity(newGravity);
     }
 
     private string treeToString(MCTSNode node)
