@@ -495,7 +495,7 @@ public class GreedyBestFirstSearch : AI
             minLeaves.Remove(selectedNode);
 
             // Try several actions
-            for (int i = 30; i < 360; i += 30)
+            for (int i = 15; i < 360; i += 15)
             {
                 selectedNode.caSnapshot.RestoreSnapshot(gameManager, false);
 

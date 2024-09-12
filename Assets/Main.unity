@@ -516,77 +516,77 @@ MonoBehaviour:
     o o w w w w w w w w w w w w w
     w w w w w w w w w w w w w w w o o
 
-    o o w w w w w w w w w w w w w w w w w
-    o o o o o o o w w w w o o
+    o o w w w o o o o o o o o o o o o o o
+    o o o o o o o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w o o o o
-    o o o w w w w o o
+    o o w w w o o o o o o o o o o o o o o o o o o
+    o o o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w o o w w w w w w
+    o o w w w o o w w w w w w w w w w w w w w w w w w o o
     w w w o o
 
-    o o w w w w w w w w w w w w w w w w w o o w w w w w w w w w o
+    o o w w w o o w w w w w w w w w w w w w w w w w w o o w w w o
     o
 
-    o o w w w w w w w w w w w w w w w w w o o w w w w w w w w w o o
+    o o w w w o o w w w w w w w w w w w w w w w w w w o o w w w o o
 
     o
-    o w w w w w w w w w w w w w w w w w o o w w w w w w w w w o o
+    o w w w o o w w w w o o o o o o o o o o o w w w o o w w w o o
 
     o o w w w
-    w w w w w w w w w w w o o o o o o o o o o o o o o o o
+    o o w w w w o o o o o o o o o o o w w w o o w w w o o
 
-    o o w w w w w w w
-    w w w w w w w o o o o o o o o o o o o o o o o
+    o o w w w o o w w
+    w w o o w w w w w w w o o w w w o o w w w o o
 
-    o o w w w w w w w w w w w
-    w w w w w w w w w w w w w w w w w . .
+    o o w w w o o w w w w o o
+    w w w w w w w o o w w w o o w w w o o
 
-    o o w w w w w w w w w w w w w w w
-    w w w w w w w w w w w w w . .
+    o o w w w o o w w w w o o w w w w
+    w w w o o w w w o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w w w
-    w w w w w w w w w . .
+    o o w w w o o w w w w o o w w w o o o o o
+    o w w w o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w w w w w w w
-    w w w w w . .
+    o o w w w o o w w w w o o w w w o o o o o o w w w
+    o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w w w w w w w w w w w
-    w . .
+    o o w w w o o w w w w o o w w w w w w w w w w w w o o w w
+    w o o
+
+    o o w w w o o w w w w o o w w w w w w w w w w w w o o w w w o o
+
+    o
+    o w w w o o w w w w o o w w w w w w w w w w w w o o w w w o o
+
+    o o w w w
+    o o w w w w o o o o o o o o o o o o o o o o w w w o o
+
+    o o w w w o o w w
+    w w o o o o o o o o o o o o o o o o w w w o o
+
+    o o w w w o o w w w w w w
+    w w w w w w w w w w w w w w w w w o o
+
+    o o w w w o o w w w w w w w w w w
+    w w w w w w w w w w w w w o o
+
+    o o w w w o o w w w w w w w w w w w w w w
+    w w w w w w w w w o o
+
+    o o w w w o o o o o o o o o o o o o o o o o o o o
+    o o o o o o o
+
+    o o w w w o o o o o o o o o o o o o o o o o o o o o o o o
+    o o o
 
     o o w w w w w w w w w w w w w w w w w w w w w w w w w w w w . .
 
     o
-    o w w w w w w w o o o o o o o w w w w w w w w w w w w w w o o
+    o w w w w w w w w w w w w w w w w w w w w w w w w w w w w . .
 
     o o w w w
-    w w w w o o o o o o o w w w w w w w w w w w w w w o o
-
-    o o w w w w w w w
-    w w w w w o o w w w w w w w w w w w w w w o o
-
-    o o w w w w w w w w w w w
-    w o o w w w w w w w w w w w w w w o o
-
-    o o w w w w w w w w w w w w o o w
-    w w w w w w w w w w w w w o o
-
-    o o w w w w w w w w w w w w o o w w w w w
-    w w w w w w w w w o o
-
-    o o w w w w w w w w w w w w o o w w w w w w w w w
-    w w w w w o o
-
-    o o w w w w w w w w w w w w o o w w w w w w w w w w w w w
-    w o o
-
-    o o w w w w w w w w w w w w o o w w w w w w w w w w w w w w o o
-
-    o
-    o w w w w w w w w w w w w o o w w w w w w w w w w w w w w o o
-
-    o o w w w
-    w w w w w w w w w o o w w w w w w w w w w w w w w o o
+    w w w w w w w w w w w w w w w w w w w w w w w w w . .
 
     o o o o o o o o o
     o o o o o o o o o o o o o o o o o o o o o o o
@@ -1165,77 +1165,77 @@ MonoBehaviour:
     o o w w w w w w w w w w w w w
     w w w w w w w w w w w w w w w o o
 
-    o o w w w w w w w w w w w w w w w w w
-    o o o o o o o w w w w o o
+    o o w w w o o o o o o o o o o o o o o
+    o o o o o o o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w o o o o
-    o o o w w w w o o
+    o o w w w o o o o o o o o o o o o o o o o o o
+    o o o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w o o w w w w w w
+    o o w w w o o w w w w w w w w w w w w w w w w w w o o
     w w w o o
 
-    o o w w w w w w w w w w w w w w w w w o o w w w w w w w w w o
+    o o w w w o o w w w w w w w w w w w w w w w w w w o o w w w o
     o
 
-    o o w w w w w w w w w w w w w w w w w o o w w w w w w w w w o o
+    o o w w w o o w w w w w w w w w w w w w w w w w w o o w w w o o
 
     o
-    o w w w w w w w w w w w w w w w w w o o w w w w w w w w w o o
+    o w w w o o w w w w o o o o o o o o o o o w w w o o w w w o o
 
     o o w w w
-    w w w w w w w w w w w o o o o o o o o o o o o o o o o
+    o o w w w w o o o o o o o o o o o w w w o o w w w o o
 
-    o o w w w w w w w
-    w w w w w w w o o o o o o o o o o o o o o o o
+    o o w w w o o w w
+    w w o o w w w w w w w o o w w w o o w w w o o
 
-    o o w w w w w w w w w w w
-    w w w w w w w w w w w w w w w w w . .
+    o o w w w o o w w w w o o
+    w w w w w w w o o w w w o o w w w o o
 
-    o o w w w w w w w w w w w w w w w
-    w w w w w w w w w w w w w . .
+    o o w w w o o w w w w o o w w w w
+    w w w o o w w w o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w w w
-    w w w w w w w w w . .
+    o o w w w o o w w w w o o w w w o o o o o
+    o w w w o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w w w w w w w
-    w w w w w . .
+    o o w w w o o w w w w o o w w w o o o o o o w w w
+    o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w w w w w w w w w w w
-    w . .
+    o o w w w o o w w w w o o w w w w w w w w w w w w o o w w
+    w o o
+
+    o o w w w o o w w w w o o w w w w w w w w w w w w o o w w w o o
+
+    o
+    o w w w o o w w w w o o w w w w w w w w w w w w o o w w w o o
+
+    o o w w w
+    o o w w w w o o o o o o o o o o o o o o o o w w w o o
+
+    o o w w w o o w w
+    w w o o o o o o o o o o o o o o o o w w w o o
+
+    o o w w w o o w w w w w w
+    w w w w w w w w w w w w w w w w w o o
+
+    o o w w w o o w w w w w w w w w w
+    w w w w w w w w w w w w w o o
+
+    o o w w w o o w w w w w w w w w w w w w w
+    w w w w w w w w w o o
+
+    o o w w w o o o o o o o o o o o o o o o o o o o o
+    o o o o o o o
+
+    o o w w w o o o o o o o o o o o o o o o o o o o o o o o o
+    o o o
 
     o o w w w w w w w w w w w w w w w w w w w w w w w w w w w w . .
 
     o
-    o w w w w w w w o o o o o o o w w w w w w w w w w w w w w o o
+    o w w w w w w w w w w w w w w w w w w w w w w w w w w w w . .
 
     o o w w w
-    w w w w o o o o o o o w w w w w w w w w w w w w w o o
-
-    o o w w w w w w w
-    w w w w w o o w w w w w w w w w w w w w w o o
-
-    o o w w w w w w w w w w w
-    w o o w w w w w w w w w w w w w w o o
-
-    o o w w w w w w w w w w w w o o w
-    w w w w w w w w w w w w w o o
-
-    o o w w w w w w w w w w w w o o w w w w w
-    w w w w w w w w w o o
-
-    o o w w w w w w w w w w w w o o w w w w w w w w w
-    w w w w w o o
-
-    o o w w w w w w w w w w w w o o w w w w w w w w w w w w w
-    w o o
-
-    o o w w w w w w w w w w w w o o w w w w w w w w w w w w w w o o
-
-    o
-    o w w w w w w w w w w w w o o w w w w w w w w w w w w w w o o
-
-    o o w w w
-    w w w w w w w w w o o w w w w w w w w w w w w w w o o
+    w w w w w w w w w w w w w w w w w w w w w w w w w . .
 
     o o o o o o o o o
     o o o o o o o o o o o o o o o o o o o o o o o
@@ -1664,7 +1664,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 177660017}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
-        m_MethodName: CalculateBestStepRandom
+        m_MethodName: StartCalculatingBestStepRandom
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1748,6 +1748,9 @@ MonoBehaviour:
   SIMULATE: {fileID: 342930033}
   extractionInfo: {fileID: 1622861359}
   rolloutInfo: {fileID: 952359238}
+  randomCalculating: 0
+  mctsCalculating: 0
+  rolloutCount: 0
   simulate: 0
   dynamicSimsPerSec: 0
   simsPerSec: 5
@@ -1930,77 +1933,77 @@ MonoBehaviour:
     o o w w w w w w w w w w w w w
     w w w w w w w w w w w w w w w o o
 
-    o o w w w w w w w w w w w w w w w w w
-    o o o o o o o w w w w o o
+    o o w w w o o o o o o o o o o o o o o
+    o o o o o o o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w o o o o
-    o o o w w w w o o
+    o o w w w o o o o o o o o o o o o o o o o o o
+    o o o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w o o w w w w w w
+    o o w w w o o w w w w w w w w w w w w w w w w w w o o
     w w w o o
 
-    o o w w w w w w w w w w w w w w w w w o o w w w w w w w w w o
+    o o w w w o o w w w w w w w w w w w w w w w w w w o o w w w o
     o
 
-    o o w w w w w w w w w w w w w w w w w o o w w w w w w w w w o o
+    o o w w w o o w w w w w w w w w w w w w w w w w w o o w w w o o
 
     o
-    o w w w w w w w w w w w w w w w w w o o w w w w w w w w w o o
+    o w w w o o w w w w o o o o o o o o o o o w w w o o w w w o o
 
     o o w w w
-    w w w w w w w w w w w o o o o o o o o o o o o o o o o
+    o o w w w w o o o o o o o o o o o w w w o o w w w o o
 
-    o o w w w w w w w
-    w w w w w w w o o o o o o o o o o o o o o o o
+    o o w w w o o w w
+    w w o o w w w w w w w o o w w w o o w w w o o
 
-    o o w w w w w w w w w w w
-    w w w w w w w w w w w w w w w w w . .
+    o o w w w o o w w w w o o
+    w w w w w w w o o w w w o o w w w o o
 
-    o o w w w w w w w w w w w w w w w
-    w w w w w w w w w w w w w . .
+    o o w w w o o w w w w o o w w w w
+    w w w o o w w w o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w w w
-    w w w w w w w w w . .
+    o o w w w o o w w w w o o w w w o o o o o
+    o w w w o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w w w w w w w
-    w w w w w . .
+    o o w w w o o w w w w o o w w w o o o o o o w w w
+    o o w w w o o
 
-    o o w w w w w w w w w w w w w w w w w w w w w w w w w w w
-    w . .
+    o o w w w o o w w w w o o w w w w w w w w w w w w o o w w
+    w o o
+
+    o o w w w o o w w w w o o w w w w w w w w w w w w o o w w w o o
+
+    o
+    o w w w o o w w w w o o w w w w w w w w w w w w o o w w w o o
+
+    o o w w w
+    o o w w w w o o o o o o o o o o o o o o o o w w w o o
+
+    o o w w w o o w w
+    w w o o o o o o o o o o o o o o o o w w w o o
+
+    o o w w w o o w w w w w w
+    w w w w w w w w w w w w w w w w w o o
+
+    o o w w w o o w w w w w w w w w w
+    w w w w w w w w w w w w w o o
+
+    o o w w w o o w w w w w w w w w w w w w w
+    w w w w w w w w w o o
+
+    o o w w w o o o o o o o o o o o o o o o o o o o o
+    o o o o o o o
+
+    o o w w w o o o o o o o o o o o o o o o o o o o o o o o o
+    o o o
 
     o o w w w w w w w w w w w w w w w w w w w w w w w w w w w w . .
 
     o
-    o w w w w w w w o o o o o o o w w w w w w w w w w w w w w o o
+    o w w w w w w w w w w w w w w w w w w w w w w w w w w w w . .
 
     o o w w w
-    w w w w o o o o o o o w w w w w w w w w w w w w w o o
-
-    o o w w w w w w w
-    w w w w w o o w w w w w w w w w w w w w w o o
-
-    o o w w w w w w w w w w w
-    w o o w w w w w w w w w w w w w w o o
-
-    o o w w w w w w w w w w w w o o w
-    w w w w w w w w w w w w w o o
-
-    o o w w w w w w w w w w w w o o w w w w w
-    w w w w w w w w w o o
-
-    o o w w w w w w w w w w w w o o w w w w w w w w w
-    w w w w w o o
-
-    o o w w w w w w w w w w w w o o w w w w w w w w w w w w w
-    w o o
-
-    o o w w w w w w w w w w w w o o w w w w w w w w w w w w w w o o
-
-    o
-    o w w w w w w w w w w w w o o w w w w w w w w w w w w w w o o
-
-    o o w w w
-    w w w w w w w w w o o w w w w w w w w w w w w w w o o
+    w w w w w w w w w w w w w w w w w w w w w w w w w . .
 
     o o o o o o o o o
     o o o o o o o o o o o o o o o o o o o o o o o
@@ -4875,7 +4878,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 177660017}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
-        m_MethodName: CalculateBestStepMCTS
+        m_MethodName: StartCalculatintgBestStepMCTS
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
