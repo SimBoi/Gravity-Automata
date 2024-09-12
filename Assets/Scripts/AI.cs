@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Windows.Forms;
-using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
 
 public struct CellularAutomataSnapshot
