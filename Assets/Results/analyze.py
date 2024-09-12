@@ -4,6 +4,7 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import re
+import os
 
 class node_id_generator:
     def __init__(self):
@@ -80,7 +81,7 @@ def analyze_hyperparameter_set(i):
                 graph_nodes = {}
                 connections_ids = [[], []]
                 for node in nodes:
-                    graph_nodes[node.id] = (f'volume={node.volume}\nvisits={node.visits}\neval={node.eval}\nrolloutDepth={node.bestRolloutDepth}\nrollout%={node.bestRolloutExtractedPercentage}', node.volume)
+                    graph_nodes[node.id] = (f'volume={node.volume}\nvisits={node.visits}\neval={node.eval}\nrolloutDepth={node.bestRolloutDepth}\nrollout%={node.bestRolloutExtractedPercentage}\nid={node.id}\nrotation={node.rotation}', node.volume)
                     if node.parent is not None:
                         connections_ids[0].append(node.parent)
                         connections_ids[1].append(node.id)
@@ -108,6 +109,8 @@ def analyze_hyperparameter_set(i):
                 plt.show()
                 pass
 
+
+
 def evaluate_hyperparameter_sets():
     best_after_1000 = []
     best_after_500 = []
@@ -115,8 +118,10 @@ def evaluate_hyperparameter_sets():
     best_after_50 = []
     best_after_25 = []
 
-    files = [1,2,4,30,58]
-    files = [f'{i}.txt' for i in files]
+    # open all files with the name format: i.txt
+    files = [f'{i}.txt' for i in range(1, 335)]
+    # remove missing files
+    files = [f for f in files if os.path.exists(f)]
     for file in files:
         # Read the file
         with open(file) as f:
@@ -155,25 +160,22 @@ def evaluate_hyperparameter_sets():
     best_after_1000.sort(key=lambda x: (-x[1], x[2]), reverse=True)
 
     print('Best after 25')
-    for i in range(5):
+    for i in range(10):
         print(best_after_25[i])
     print('Best after 50')
-    for i in range(5):
+    for i in range(10):
         print(best_after_50[i])
     print('Best after 100')
-    for i in range(5):
+    for i in range(10):
         print(best_after_100[i])
     print('Best after 500')
-    for i in range(5):
+    for i in range(10):
         print(best_after_500[i])
     print('Best after 1000')
-    for i in range(5):
+    for i in range(10):
         print(best_after_1000[i])
 
 
 
-analyze_hyperparameter_set(1)
-# analyze_hyperparameter_set(2)
-# analyze_hyperparameter_set(4)
-# analyze_hyperparameter_set(30)
-# analyze_hyperparameter_set(58)
+# evaluate_hyperparameter_sets()
+analyze_hyperparameter_set(4)

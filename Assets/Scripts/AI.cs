@@ -1,35 +1,37 @@
 using System;
 using System.Collections.Generic;
+using System.Windows.Forms;
+using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
 
 public struct CellularAutomataSnapshot
 {
-    public Cell[,,] grid;
+    public Cell[,] grid;
     public float totalVolume;
     public Quaternion rotation;
 
     public CellularAutomataSnapshot(GameManager gameManager)
     {
-        grid = (Cell[,,])gameManager.ca.grid.Clone();
+        grid = (Cell[,])gameManager.ca.grid.Clone();
         totalVolume = gameManager.ca.totalVolume;
-        rotation = gameManager.envBounds.transform.rotation;
+        rotation = gameManager.grid.transform.rotation;
     }
 
     public void RestoreSnapshot(GameManager gameManager, bool rerender)
     {
-        gameManager.ca.grid = (Cell[,,])grid.Clone();
+        gameManager.ca.grid = (Cell[,])grid.Clone();
         gameManager.ca.totalVolume = totalVolume;
-        gameManager.envBounds.transform.rotation = rotation;
-        Vector3 gravity = gameManager.envBounds.transform.InverseTransformDirection(Vector3.down).normalized * 10;
+        gameManager.grid.transform.rotation = rotation;
+        Vector3 gravity3D = gameManager.grid.transform.InverseTransformDirection(Vector3.down).normalized * 10;
+        Vector2 gravity = new Vector2(gravity3D.x, gravity3D.y);
         gameManager.ca.UpdateGravity(gravity);
 
         if (rerender)
         {
             for (int x = 0; x < gameManager.ca.size; x++)
                 for (int y = 0; y < gameManager.ca.size; y++)
-                    for (int z = 0; z < gameManager.ca.size; z++)
-                        gameManager.water.UpdateVoxel(new Vector3Int(x, y, z), gameManager.ca.grid[x, y, z].volume <= 0 ? 1 : -gameManager.ca.grid[x, y, z].volume);
-            gameManager.water.ReRenderAllChunks();
+                    gameManager.grid.values[x, y] = gameManager.ca.grid[x, y].volume;
+            gameManager.grid.ReRenderAllVoxels();
         }
     }
 }
@@ -38,15 +40,15 @@ public interface AI
 {
     public void beginSearch(GameManager gameManager);
     public void SearchStep();
-    public Vector2 PeakDecision();
-    public Vector2 Decide();
+    public float PeakDecision();
+    public float Decide();
 }
 
 public class RandomRollouts : AI
 {
     private GameManager gameManager;
     public CellularAutomataSnapshot rootSnapshot;
-    public Vector2 bestAction;
+    public float bestAction;
     public int bestPathLength;
     public float bestPathExtractedWater;
     public int rolloutCount;
@@ -55,7 +57,7 @@ public class RandomRollouts : AI
     {
         this.gameManager = gameManager;
         rootSnapshot = new CellularAutomataSnapshot(gameManager);
-        bestAction = Vector2.zero;
+        bestAction = 0;
         bestPathLength = 6;
         bestPathExtractedWater = 0;
         rolloutCount = 0;
@@ -66,14 +68,14 @@ public class RandomRollouts : AI
         rootSnapshot.RestoreSnapshot(gameManager, false);
 
         // rollout
-        Vector2 firstAction = Vector2.zero;
+        float firstAction = 0;
         for (int i = 1; i <= bestPathLength; i++)
         {
-            Vector2 nextAction = RandomAction();
+            float nextAction = RandomAction();
             if (i == 1) firstAction = nextAction;
-            gameManager.envBounds.transform.Rotate(0, nextAction.y, 0, Space.World);
-            gameManager.envBounds.transform.Rotate(nextAction.x, 0, 0, Space.World);
-            Vector3 newGravity = gameManager.envBounds.transform.InverseTransformDirection(Vector3.down).normalized * 10;
+            gameManager.grid.transform.Rotate(0, 0, nextAction, Space.World);
+            Vector3 newGravity3D = gameManager.grid.transform.InverseTransformDirection(Vector3.down).normalized * 10;
+            Vector2 newGravity = new Vector2(newGravity3D.x, newGravity3D.y);
             gameManager.ca.UpdateGravity(newGravity);
             // simulate t seconds after each action
             int t = 5;
@@ -97,26 +99,20 @@ public class RandomRollouts : AI
         }
     }
 
-    public Vector2 PeakDecision()
+    public float PeakDecision()
     {
         return bestAction;
     }
 
-    public Vector2 Decide()
+    public float Decide()
     {
         rootSnapshot.RestoreSnapshot(gameManager, true);
         return bestAction;
     }
 
-    public Vector2 RandomAction()
+    public float RandomAction()
     {
-        float u = UnityEngine.Random.Range(0f, 1f);
-        float v = UnityEngine.Random.Range(0f, 1f);
-        float theta = Mathf.Acos(2 * u - 1);
-        float phi = 2 * Mathf.PI * v;
-        theta *= Mathf.Rad2Deg;
-        phi *= Mathf.Rad2Deg;
-        return new Vector2(theta, phi);
+        return UnityEngine.Random.Range(0f, 360f);
     }
 }
 
@@ -311,28 +307,24 @@ public class MCTS : AI
     public void RolloutStep(int secondsToSimulate)
     {
         // Apply a random rotation
-        Vector2 action = RandomAction();
-        gameManager.envBounds.transform.Rotate(0, action.y, 0, Space.World);
-        gameManager.envBounds.transform.Rotate(action.x, 0, 0, Space.World);
-        Vector3 newGravity = gameManager.envBounds.transform.InverseTransformDirection(Vector3.down).normalized * 10;
+        float action = RandomAction();
+        float newRotation = gameManager.grid.transform.rotation.eulerAngles.z + action;
+        gameManager.grid.transform.rotation = Quaternion.Euler(0, 0, newRotation);
+        Vector3 newGravity3d = gameManager.grid.transform.InverseTransformDirection(Vector3.down).normalized * 10;
+        Vector2 newGravity = new Vector2(newGravity3d.x, newGravity3d.y);
         gameManager.ca.UpdateGravity(newGravity);
 
         // simulate the game for some time
-        for (int i = 0; i < gameManager.simsPerSec * secondsToSimulate; i++)
+        float ssp = gameManager.simsPerSec == 0 ? 5 : gameManager.simsPerSec;
+        for (int i = 0; i < ssp * secondsToSimulate; i++)
         {
             gameManager.ca.SimulateStep();
         }
     }
 
-    private Vector2 RandomAction()
+    private float RandomAction()
     {
-        float u = UnityEngine.Random.Range(0f, 1f);
-        float v = UnityEngine.Random.Range(0f, 1f);
-        float theta = Mathf.Acos(2 * u - 1);
-        float phi = 2 * Mathf.PI * v;
-        theta *= Mathf.Rad2Deg;
-        phi *= Mathf.Rad2Deg;
-        return new Vector2(theta, phi);
+        return UnityEngine.Random.Range(-180f, 180f);
     }
 
     //////////////////////////////// Backpropagation Phase ////////////////////////////////
@@ -395,28 +387,238 @@ public class MCTS : AI
 
     //////////////////////////////// Decision Phase ////////////////////////////////
 
-    public Vector2 PeakDecision()
+    public float PeakDecision()
     {
         // Select the best action based on the evaluation of the children of the root node
         float maxEval = float.MinValue;
-        Vector2 bestAction = Vector2.zero;
+        float bestAction = 0;
         for (int i = 0; i < rootNode.children.Count; i++)
         {
             float eval = rootNode.children[i].eval;
             if (eval > maxEval)
             {
                 maxEval = eval;
-                bestAction = rootNode.children[i].caSnapshot.rotation.eulerAngles;
+                bestAction = rootNode.children[i].caSnapshot.rotation.eulerAngles.z;
+                Debug.Log("best child rotation: " + rootNode.children[i].caSnapshot.rotation.eulerAngles);
             }
         }
         return bestAction;
     }
 
-    public Vector2 Decide()
+    public float Decide()
     {
         // restore the original state
         rootNode.caSnapshot.RestoreSnapshot(gameManager, true);
+        float bestAction = PeakDecision();
+        Debug.Log("best action: " + bestAction);
+        return bestAction;
+    }
+}
 
-        return PeakDecision();
+
+public class GBFSNode
+{
+    // state representation
+    public CellularAutomataSnapshot caSnapshot;
+    public int depth;
+
+    // Tree structure
+    public GBFSNode parent;
+    public List<GBFSNode> children;
+
+    // MCTS statistics
+    public int visits;
+    public float eval;
+    public RolloutResult bestRollout;
+
+    public GBFSNode(GameManager gameManager, GBFSNode parent = null)
+    {
+        caSnapshot = new CellularAutomataSnapshot(gameManager);
+        depth = 0;
+        this.parent = parent;
+        children = new List<GBFSNode>();
+        eval = 0;
+    }
+}
+
+
+public class GreedyBestFirstSearch : AI
+{
+    private GameManager gameManager;
+    private float bestAction;
+    private int[,] distanceToExit; // 2D array of distances from each cell to the closest exit
+    public GBFSNode rootNode { get; private set; }
+    private int maxDepth = 6;
+    private List<GBFSNode> minLeaves;
+
+    public GreedyBestFirstSearch(GameManager gameManager)
+    {
+        this.gameManager = gameManager;
+        ComputeDistanceToExit();
+    }
+
+    public void beginSearch(GameManager gameManager)
+    {
+        rootNode = new GBFSNode(gameManager);
+        bestAction = 0;
+        minLeaves = new List<GBFSNode>
+        {
+            rootNode
+        };
+    }
+
+    public void SearchStep()
+    {
+        while (minLeaves.Count > 0)
+        {
+            // Select a leaf node with th eminimum evaluation
+            GBFSNode selectedNode = minLeaves[0];
+            for (int i = 1; i < minLeaves.Count; i++)
+            {
+                if (minLeaves[i].eval < selectedNode.eval)
+                {
+                    selectedNode = minLeaves[i];
+                }
+            }
+
+            // return if the selected node is at the maximum depth
+            if (selectedNode.depth == maxDepth)
+            {
+                GBFSNode ancestor = selectedNode.parent;
+                while (ancestor.parent != rootNode)
+                {
+                    ancestor = ancestor.parent;
+                }
+                bestAction = ancestor.caSnapshot.rotation.eulerAngles.z;
+                break;
+            }
+
+            // dequeue the selected node from the list of leaves
+            minLeaves.Remove(selectedNode);
+
+            // Try several actions
+            for (int i = 30; i < 360; i += 30)
+            {
+                selectedNode.caSnapshot.RestoreSnapshot(gameManager, false);
+
+                float action = i;
+                float newRotation = gameManager.grid.transform.rotation.eulerAngles.z + action;
+                gameManager.grid.transform.rotation = Quaternion.Euler(0, 0, newRotation);
+                Vector3 newGravity3D = gameManager.grid.transform.InverseTransformDirection(Vector3.down).normalized * 10;
+                Vector2 newGravity = new Vector2(newGravity3D.x, newGravity3D.y);
+                gameManager.ca.UpdateGravity(newGravity);
+
+                // Simulate a few steps to get the result of the action
+                float ssp = gameManager.simsPerSec == 0 ? 5 : gameManager.simsPerSec;
+                for (int j = 0; j < ssp * 5; j++)
+                {
+                    gameManager.ca.fps = ssp;
+                    gameManager.ca.SimulateStep();
+                }
+
+                // Evaluate the result
+                float evaluation = EvaluateGrid();
+
+                // Create a new child node for the selected action
+                GBFSNode newNode = new GBFSNode(gameManager, selectedNode);
+                newNode.depth = selectedNode.depth + 1;
+                newNode.eval = evaluation;
+                selectedNode.children.Add(newNode);
+                minLeaves.Add(newNode);
+            }
+        }
+
+        rootNode.caSnapshot.RestoreSnapshot(gameManager, false);
+    }
+
+    private void ComputeDistanceToExit()
+    {
+        int size = gameManager.ca.size;
+        // Initialize the distance array with large values
+        distanceToExit = new int[size, size];
+
+        // Initialize distances with a large value
+        for (int x = 0; x < size; x++)
+        {
+            for (int y = 0; y < size; y++)
+            {
+                distanceToExit[x, y] = int.MaxValue;
+            }
+        }
+
+        // Perform BFS to calculate distances to the nearest exit
+        Queue<(int x, int y)> queue = new Queue<(int x, int y)>();
+
+        // Enqueue all exit cells with distance 0
+        for (int x = 0; x < size; x++)
+        {
+            for (int y = 0; y < size; y++)
+            {
+                if (IsExitCell(x, y))
+                {
+                    queue.Enqueue((x, y));
+                    distanceToExit[x, y] = 0;
+                }
+            }
+        }
+
+        // BFS to calculate shortest paths to exit
+        int[] dx = { -1, 1, 0, 0 };
+        int[] dy = { 0, 0, -1, 1 };
+
+        while (queue.Count > 0)
+        {
+            var (cx, cy) = queue.Dequeue();
+
+            for (int d = 0; d < 4; d++)
+            {
+                int nx = cx + dx[d];
+                int ny = cy + dy[d];
+
+                if (IsValidCell(nx, ny) && distanceToExit[nx, ny] == int.MaxValue)
+                {
+                    distanceToExit[nx, ny] = distanceToExit[cx, cy] + 1;
+                    queue.Enqueue((nx, ny));
+                }
+            }
+        }
+    }
+    private bool IsExitCell(int x, int y)
+    {
+        // Check if the cell contains the exit character '.'
+        if (x != 0 && x != gameManager.ca.size - 1 && y != 0 && y != gameManager.ca.size - 1) return false;
+        return gameManager.ca.grid[x, y].volume == 0;
+    }
+
+    private bool IsValidCell(int x, int y)
+    {
+        return x >= 0 && x < gameManager.ca.size && y >= 0 && y < gameManager.ca.size && gameManager.ca.grid[x, y].volume != -1;
+    }
+
+    private float EvaluateGrid()
+    {
+        // Evaluate the grid based on the sum of distances for all cells
+        float totalEvaluation = 0;
+        for (int x = 0; x < gameManager.ca.size; x++)
+        {
+            for (int y = 0; y < gameManager.ca.size; y++)
+            {
+                if (gameManager.ca.grid[x, y].volume > 0)
+                    totalEvaluation += distanceToExit[x, y];
+            }
+        }
+
+        return totalEvaluation;
+    }
+
+    public float PeakDecision()
+    {
+        return bestAction;
+    }
+
+    public float Decide()
+    {
+        rootNode.caSnapshot.RestoreSnapshot(gameManager, true);
+        return bestAction;
     }
 }

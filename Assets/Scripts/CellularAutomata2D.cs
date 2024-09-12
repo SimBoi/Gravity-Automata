@@ -62,7 +62,7 @@ public class TraversingLines
 
         Vector2 horizontalDir = Vector2.Perpendicular(downDir).normalized;
         if (Vector2.Dot(downNormalDir, horizontalDir) < 0) horizontalDir *= -1;
-        horizontal = CellularVector2D.Bresenham(Vector2Int.zero, Vector2Int.FloorToInt(horizontalDir * size * 1.5f)).GetRange(0, size).ToArray();
+        horizontal = CellularVector2D.Bresenham(Vector2Int.zero, CellularVector2D.Round(horizontalDir * size * 1.5f)).GetRange(0, size).ToArray();
         GenerateStartPoints(size, horizontalDir, ref horizontalStartPoints);
 
         // fill point index on path hashtables
@@ -234,6 +234,14 @@ public struct Cell
         if (hasBeenSimulated) return;
         hasBeenSimulated = true;
 
+        // flow out of bounds if on the edge
+        if (p.x == 0 || p.x == ca.size - 1 || p.y == 0 || p.y == ca.size - 1)
+        {
+            FlowOutOfBounds(ca);
+            ca.grid2d.UpdateVoxel(p, volume);
+            return;
+        }
+
         float prevVolume = volume;
 
         // apply acceletation due to gravity
@@ -243,8 +251,8 @@ public struct Cell
         FlowDown(ca, p);
         if (volume > 0) FlowDiagonally(ca, p);
 
-        // update marching cubes
-        if (prevVolume != volume) ca.water.UpdateVoxel(p, volume <= 0 ? 1 : -volume);
+        // update voxel
+        if (prevVolume != volume) ca.grid2d.UpdateVoxel(p, volume);
 
         if (volume <= 0) volume = 0f;
     }
@@ -276,6 +284,7 @@ public struct Cell
         if (outOfBounds && farthestPoint == fallPath.Count - 1)
         {
             FlowOutOfBounds(ca);
+            ca.grid2d.UpdateVoxel(start, volume);
             return;
         }
 
@@ -336,7 +345,7 @@ public struct Cell
         ca.grid[p.x, p.y].volume = transfer;
         ca.grid[p.x, p.y].hasBeenSimulated = true;
         ca.grid[p.x, p.y].momentum = momentum;
-        ca.water.UpdateVoxel(p, -transfer);
+        ca.grid2d.UpdateVoxel(p, transfer);
         return transfer;
     }
 
@@ -346,7 +355,7 @@ public struct Cell
         if (!overflow) transfer = Mathf.Min(ca.grid[p.x, p.y].capacity - ca.grid[p.x, p.y].volume, maxFlow);
         if (transfer <= 0) return 0;
         ca.grid[p.x, p.y].volume += transfer;
-        ca.water.UpdateVoxel(p, -ca.grid[p.x, p.y].volume);
+        ca.grid2d.UpdateVoxel(p, ca.grid[p.x, p.y].volume);
         volume -= transfer;
         return transfer;
     }
@@ -366,7 +375,7 @@ public class CellularAutomata2D : MonoBehaviour
     public Cell[,] grid;
     public Vector2 gravity; // relative to the local grid
     public TraversingLines traversingLines;
-    public Grid2D water;
+    public Grid2D grid2d;
     public float initialTotalVolume;
     public float totalVolume;
 
@@ -384,7 +393,7 @@ public class CellularAutomata2D : MonoBehaviour
         initialTotalVolume = 0f;
     }
 
-    public void UpdateGravity(Vector3 newDir)
+    public void UpdateGravity(Vector2 newDir)
     {
         gravity = newDir;
         traversingLines.GenerateLines(gravity);
@@ -420,6 +429,10 @@ public class CellularAutomata2D : MonoBehaviour
         if ((2 * size) % terminalVelocity != 0) layers += 1;
         int evenLayers = layers % 2 == 0 ? layers / 2 : layers / 2 + 1;
         int oddLayers = layers / 2;
+        bool[,] visited = new bool[size, size];
+        for (int i = 0; i < size; i++)
+            for (int j = 0; j < size; j++)
+                visited[i, j] = false;
         Parallel.For(0, evenLayers, t =>
         {
             for (int k = 0; k < terminalVelocity; k++)
@@ -431,6 +444,7 @@ public class CellularAutomata2D : MonoBehaviour
                     Vector2Int point = traversingLines.horizontalStartPoints[startPointIndex] + traversingLines.horizontal[i];
                     if (!InRange(point)) continue;
                     if (grid[point.x, point.y].volume > 0f) grid[point.x, point.y].SimulateCell(this, point);
+                    visited[point.x, point.y] = true;
                 }
             }
         });
@@ -444,6 +458,7 @@ public class CellularAutomata2D : MonoBehaviour
                     Vector2Int point = traversingLines.horizontalStartPoints[k + (t * 2 + 1) * terminalVelocity] + traversingLines.horizontal[i];
                     if (!InRange(point)) continue;
                     if (grid[point.x, point.y].volume > 0f) grid[point.x, point.y].SimulateCell(this, point);
+                    visited[point.x, point.y] = true;
                 }
             }
         });
@@ -553,7 +568,7 @@ public class CellularAutomata2D : MonoBehaviour
         foreach (Vector2Int p in waterBody)
         {
             grid[p.x, p.y].volume = split;
-            water.UpdateVoxel(p, -grid[p.x, p.y].volume);
+            grid2d.UpdateVoxel(p, grid[p.x, p.y].volume);
         }
     }
 
