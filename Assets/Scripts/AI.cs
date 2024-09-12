@@ -78,8 +78,8 @@ public class RandomRollouts : AI
             Vector2 newGravity = new Vector2(newGravity3D.x, newGravity3D.y);
             gameManager.ca.UpdateGravity(newGravity);
             // simulate t seconds after each action
-            int t = 5;
-            for (int j = 0; j < gameManager.simsPerSec * t; j++)
+            float ssp = gameManager.simsPerSec == 0 ? 5 : gameManager.simsPerSec;
+            for (int j = 0; j < ssp * 5; j++)
             {
                 gameManager.ca.SimulateStep();
             }
@@ -399,7 +399,6 @@ public class MCTS : AI
             {
                 maxEval = eval;
                 bestAction = rootNode.children[i].caSnapshot.rotation.eulerAngles.z;
-                Debug.Log("best child rotation: " + rootNode.children[i].caSnapshot.rotation.eulerAngles);
             }
         }
         return bestAction;
@@ -410,7 +409,6 @@ public class MCTS : AI
         // restore the original state
         rootNode.caSnapshot.RestoreSnapshot(gameManager, true);
         float bestAction = PeakDecision();
-        Debug.Log("best action: " + bestAction);
         return bestAction;
     }
 }

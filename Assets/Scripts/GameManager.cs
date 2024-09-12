@@ -34,6 +34,9 @@ public class GameManager : MonoBehaviour
     public GameObject SIMULATE;
     public Text extractionInfo;
     public Text rolloutInfo;
+    public bool randomCalculating = false;
+    public bool mctsCalculating = false;
+    public int rolloutCount = 0;
 
     [HideInInspector]
     public bool simulate = false, dynamicSimsPerSec = false;
@@ -51,7 +54,29 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        if (simulate)
+        if (randomCalculating)
+        {
+            randomAi.SearchStep();
+            rolloutCount++;
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                rolloutCount = 0;
+                randomCalculating = false;
+                DecideBestStepRandom();
+            }
+        }
+        else if (mctsCalculating)
+        {
+            mctsAi.SearchStep();
+            rolloutCount++;
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                rolloutCount = 0;
+                mctsCalculating = false;
+                DecideBestStepMCTS();
+            }
+        }
+        else if (simulate)
         {
             if (dynamicSimsPerSec)
             {
@@ -73,6 +98,7 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
+        rolloutInfo.text = "Stop after current rollout <b>[Space]</b>\nCurrent rollouts count: " + rolloutCount;
     }
 
     public void SetSize(string size)
@@ -151,22 +177,34 @@ public class GameManager : MonoBehaviour
         ca.UpdateGravity(newGravity);
     }
 
-    public void CalculateBestStepRandom()
+    public void StartCalculatingBestStepRandom()
     {
+        if (randomCalculating || mctsCalculating) return;
         randomAi.beginSearch(this);
-        for (int i = 0; i < 100; i++) randomAi.SearchStep();
+        randomCalculating = true;
+    }
+
+    public void DecideBestStepRandom()
+    {
         float bestAction = randomAi.Decide();
+        Debug.Log("Best action: " + bestAction);
         grid.transform.rotation = Quaternion.Euler(0, 0, bestAction);
         Vector3 newGravity3D = grid.transform.InverseTransformDirection(Vector3.down).normalized * 10;
         Vector2 newGravity = new Vector2(newGravity3D.x, newGravity3D.y);
         ca.UpdateGravity(newGravity);
     }
 
-    public void CalculateBestStepMCTS()
+    public void StartCalculatintgBestStepMCTS()
     {
+        if (randomCalculating || mctsCalculating) return;
         mctsAi.beginSearch(this);
-        for (int i = 0; i < 100; i++) mctsAi.SearchStep();
+        mctsCalculating = true;
+    }
+
+    public void DecideBestStepMCTS()
+    {
         float bestAction = mctsAi.Decide();
+        Debug.Log("Best action: " + bestAction);
         grid.transform.rotation = Quaternion.Euler(0, 0, bestAction);
         Vector3 newGravity3D = grid.transform.InverseTransformDirection(Vector3.down).normalized * 10;
         Vector2 newGravity = new Vector2(newGravity3D.x, newGravity3D.y);
@@ -175,9 +213,11 @@ public class GameManager : MonoBehaviour
 
     public void CalculateBestStepGreedy()
     {
+        if (randomCalculating || mctsCalculating) return;
         greedyAi.beginSearch(this);
         greedyAi.SearchStep();
         float bestAction = greedyAi.Decide();
+        Debug.Log("Best action: " + bestAction);
         grid.transform.rotation = Quaternion.Euler(0, 0, bestAction);
         Vector3 newGravity3D = grid.transform.InverseTransformDirection(Vector3.down).normalized * 10;
         Vector2 newGravity = new Vector2(newGravity3D.x, newGravity3D.y);
