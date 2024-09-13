@@ -437,7 +437,6 @@ public class GBFSNode
     }
 }
 
-
 public class GreedyBestFirstSearch : AI
 {
     private GameManager gameManager;
@@ -477,11 +476,11 @@ public class GreedyBestFirstSearch : AI
                 }
             }
 
-            // return if the selected node is at the maximum depth
-            if (selectedNode.depth == maxDepth)
+            // return if the selected node is at the maximum depth, or the extracted water is higher than 95%
+            if (selectedNode.depth == maxDepth || selectedNode.caSnapshot.totalVolume / gameManager.ca.initialTotalVolume < 0.05f)
             {
-                GBFSNode ancestor = selectedNode.parent;
-                while (ancestor.parent != rootNode)
+                GBFSNode ancestor = selectedNode;
+                while (ancestor != rootNode && ancestor.parent != rootNode)
                 {
                     ancestor = ancestor.parent;
                 }
@@ -579,6 +578,7 @@ public class GreedyBestFirstSearch : AI
             }
         }
     }
+
     private bool IsExitCell(int x, int y)
     {
         // Check if the cell contains the exit character '.'
