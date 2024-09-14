@@ -25,7 +25,6 @@ public class HyperparameterSetArray
     public HyperparameterSet[] sets;
 }
 
-
 public class GameManager : MonoBehaviour
 {
     public CellularAutomata3D ca;
@@ -39,7 +38,8 @@ public class GameManager : MonoBehaviour
     public GameObject SIMULATE;
     public Text extractionInfo;
     public Text rolloutInfo;
-    public TextAsset hyperparametersJson;
+    public bool aiCalculating = false;
+    public int rolloutCount = 0;
 
     [HideInInspector]
     public bool simulate = false, dynamicSimsPerSec = false;
@@ -50,7 +50,18 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        if (simulate)
+        if (aiCalculating)
+        {
+            ai.SearchStep();
+            rolloutCount++;
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                rolloutCount = 0;
+                aiCalculating = false;
+                DecideBestStep();
+            }
+        }
+        else if (simulate)
         {
             if (Input.GetMouseButtonUp(0))
             {
@@ -92,6 +103,7 @@ public class GameManager : MonoBehaviour
                 renderTimer += Time.deltaTime;
             }
         }
+        rolloutInfo.text = "Stop after current rollout <b>[Space]</b>\nCurrent rollouts count: " + rolloutCount;
     }
 
     public void LoadObj()
@@ -201,8 +213,10 @@ public class GameManager : MonoBehaviour
         simulate = true;
     }
 
-    public void CalculateBestStep()
+    public void BeginCalculatingBestStep()
     {
+        if (aiCalculating) return;
+        aiCalculating = true;
         ai = new MCTS()
         {
             shouldExpandNewChildUCTThreshold = 0.7152f,
@@ -216,12 +230,10 @@ public class GameManager : MonoBehaviour
             evalWeightMaxChild = 0.1791f
         };
         ai.beginSearch(this);
-        for (int i = 0; i < 1000; i++)
-        {
-            ai.SearchStep();
-        }
-        ai.rootNode.caSnapshot.RestoreSnapshot(this, true);
+    }
 
+    public void DecideBestStep()
+    {
         Vector2 bestAction = ai.Decide();
         envBounds.transform.Rotate(0, bestAction.y, 0, Space.World);
         envBounds.transform.Rotate(bestAction.x, 0, 0, Space.World);

@@ -75,9 +75,9 @@ public class RandomRollouts : AI
             gameManager.envBounds.transform.Rotate(nextAction.x, 0, 0, Space.World);
             Vector3 newGravity = gameManager.envBounds.transform.InverseTransformDirection(Vector3.down).normalized * 10;
             gameManager.ca.UpdateGravity(newGravity);
-            // simulate t seconds after each action
-            int t = 5;
-            for (int j = 0; j < gameManager.simsPerSec * t; j++)
+            // simulate 5 seconds after each action
+            float sps = gameManager.simsPerSec == 0 ? 5 : gameManager.simsPerSec;
+            for (int j = 0; j < sps * 5; j++)
             {
                 gameManager.ca.SimulateStep();
             }
@@ -299,7 +299,7 @@ public class MCTS : AI
         int depth;
         for (depth = leafNode.depth; depth < maxDepth; depth++)
         {
-            RolloutStep(10);
+            RolloutStep(5);
 
             // Finish the rollout if the remaining water is less than 5%
             if (gameManager.ca.totalVolume / gameManager.ca.initialTotalVolume < 0.05f) break;
@@ -318,7 +318,8 @@ public class MCTS : AI
         gameManager.ca.UpdateGravity(newGravity);
 
         // simulate the game for some time
-        for (int i = 0; i < gameManager.simsPerSec * secondsToSimulate; i++)
+        float sps = gameManager.simsPerSec == 0 ? 5 : gameManager.simsPerSec;
+        for (int i = 0; i < sps * secondsToSimulate; i++)
         {
             gameManager.ca.SimulateStep();
         }
