@@ -48,6 +48,7 @@ public class RandomRollouts : AI
     public CellularAutomataSnapshot rootSnapshot;
     public Vector2 bestAction;
     public int bestPathLength;
+    public float bestPathExtractedWater;
     public int rolloutCount;
 
     public void beginSearch(GameManager gameManager)
@@ -55,7 +56,8 @@ public class RandomRollouts : AI
         this.gameManager = gameManager;
         rootSnapshot = new CellularAutomataSnapshot(gameManager);
         bestAction = Vector2.zero;
-        bestPathLength = 10;
+        bestPathLength = 6;
+        bestPathExtractedWater = 0;
         rolloutCount = 0;
     }
 
@@ -65,7 +67,7 @@ public class RandomRollouts : AI
 
         // rollout
         Vector2 firstAction = Vector2.zero;
-        for (int i = 1; i < bestPathLength; i++)
+        for (int i = 1; i <= bestPathLength; i++)
         {
             Vector2 nextAction = RandomAction();
             if (i == 1) firstAction = nextAction;
@@ -73,17 +75,24 @@ public class RandomRollouts : AI
             gameManager.envBounds.transform.Rotate(nextAction.x, 0, 0, Space.World);
             Vector3 newGravity = gameManager.envBounds.transform.InverseTransformDirection(Vector3.down).normalized * 10;
             gameManager.ca.UpdateGravity(newGravity);
-            // simulate t seconds after each action
-            int t = 5;
-            for (int j = 0; j < gameManager.simsPerSec * t; j++)
+            // simulate 5 seconds after each action
+            float sps = gameManager.simsPerSec == 0 ? 5 : gameManager.simsPerSec;
+            for (int j = 0; j < sps * 5; j++)
             {
                 gameManager.ca.SimulateStep();
             }
             // update best path
-            if (gameManager.ca.totalVolume / gameManager.ca.initialTotalVolume < 0.05f)
+            float extractedWater = 1 - gameManager.ca.totalVolume / gameManager.ca.initialTotalVolume;
+            if (extractedWater > 0.95f)
             {
                 bestPathLength = i;
                 bestAction = firstAction;
+                bestPathExtractedWater = extractedWater;
+            }
+            else if (bestPathLength == i && extractedWater > bestPathExtractedWater)
+            {
+                bestAction = firstAction;
+                bestPathExtractedWater = extractedWater;
             }
         }
     }
@@ -153,7 +162,7 @@ public class MCTSNode
 public class MCTS : AI
 {
     public GameManager gameManager;
-    private MCTSNode rootNode;
+    public MCTSNode rootNode { get; private set; }
     private int maxDepth = 6;
 
     //////////////////////////////// weights and parameters for tuning ////////////////////////////////
@@ -192,8 +201,6 @@ public class MCTS : AI
 
         // Use the result of the rollout to update the evaluation of the new node and its ancestors
         BackPropagate(node, rolloutResult);
-
-        Debug.Log("selected node: eval=" + node.eval + ", depth=" + node.depth + ", children=" + node.children.Count + "\nrollout result: depth=" + rolloutResult.depth + ", extracted=" + rolloutResult.extractedWaterPercentage);
     }
 
     //////////////////////////////// Selection Phase ////////////////////////////////
@@ -270,7 +277,7 @@ public class MCTS : AI
         parent.caSnapshot.RestoreSnapshot(gameManager, false);
 
         // Rollout the game for one step
-        RolloutStep(5);
+        RolloutStep(10);
 
         // create a child node for the resulting state
         MCTSNode child = new(gameManager, parent)
@@ -311,7 +318,8 @@ public class MCTS : AI
         gameManager.ca.UpdateGravity(newGravity);
 
         // simulate the game for some time
-        for (int i = 0; i < gameManager.simsPerSec * secondsToSimulate; i++)
+        float sps = gameManager.simsPerSec == 0 ? 5 : gameManager.simsPerSec;
+        for (int i = 0; i < sps * secondsToSimulate; i++)
         {
             gameManager.ca.SimulateStep();
         }
@@ -333,10 +341,11 @@ public class MCTS : AI
     private void BackPropagate(MCTSNode leafNode, RolloutResult rolloutResult)
     {
         // Update the best rollout result if the new result is better for the leaf node and its ancestors
-        if ((rolloutResult.depth < leafNode.bestRollout.depth) ||
-            (rolloutResult.depth == leafNode.bestRollout.depth && rolloutResult.extractedWaterPercentage > leafNode.bestRollout.extractedWaterPercentage))
+        for (MCTSNode currentNode = leafNode; currentNode != null; currentNode = currentNode.parent)
         {
-            for (MCTSNode currentNode = leafNode; currentNode != null; currentNode = currentNode.parent)
+            if ((rolloutResult.depth < currentNode.bestRollout.depth) ||
+                (rolloutResult.depth == currentNode.bestRollout.depth &&
+                rolloutResult.extractedWaterPercentage > currentNode.bestRollout.extractedWaterPercentage))
             {
                 currentNode.bestRollout = rolloutResult;
             }
