@@ -31,6 +31,7 @@ public class GameManager : MonoBehaviour
     public GameObject loadedObject = null;
     public MarchingCubesChunk objModel;
     public MarchingCubesChunk water;
+    public Camera camera;
     public MCTS ai;
     public GameObject envBounds;
     public GameObject LOAD;
@@ -110,11 +111,11 @@ public class GameManager : MonoBehaviour
     {
         var extensions = new[] { new ExtensionFilter("Obj Files", "obj") };
         var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, true);
-        loadedObject = new OBJLoader().Load(paths[0]);
-        loadedObject.transform.localScale = Vector3.one;
-        loadedObject.layer = 6;
+        GameObject loadedObj = new OBJLoader().Load(paths[0]);
+        loadedObj.transform.localScale = Vector3.one;
+        loadedObj.layer = 6;
 
-        foreach (Transform child in loadedObject.GetComponentsInChildren<Transform>())
+        foreach (Transform child in loadedObj.GetComponentsInChildren<Transform>())
         {
             if (child.GetComponent<MeshFilter>())
             {
@@ -123,13 +124,15 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        Bounds bounds = new Bounds(loadedObject.transform.position, Vector3.zero);
-        foreach (Renderer r in loadedObject.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(r.bounds);
+        Bounds bounds = new Bounds(loadedObj.transform.position, Vector3.zero);
+        foreach (Renderer r in loadedObj.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(r.bounds);
         float scale = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-        loadedObject.transform.localScale *= 0.9f * ca.size / scale;
-        loadedObject.AddComponent<BoxCollider>();
-        loadedObject.GetComponent<BoxCollider>().size = bounds.size;
-        loadedObject.GetComponent<BoxCollider>().center = bounds.center;
+        loadedObj.transform.localScale *= 0.9f * ca.size / scale;
+        loadedObj.AddComponent<BoxCollider>();
+        loadedObj.GetComponent<BoxCollider>().size = bounds.size;
+        loadedObj.GetComponent<BoxCollider>().center = bounds.center;
+
+        loadedObj.transform.parent = loadedObject.transform;
 
         LOAD.SetActive(false);
         GENERATE.SetActive(true);
@@ -139,9 +142,11 @@ public class GameManager : MonoBehaviour
     {
         if (size.Length < 1) return;
         ca.size = int.Parse(size);
+        loadedObject.transform.localScale = Vector3.one * ca.size;
         objModel.transform.position = new Vector3(-ca.size / 2, -ca.size / 2, -ca.size / 2);
         water.transform.position = new Vector3(-ca.size / 2, -ca.size / 2, -ca.size / 2);
         envBounds.transform.localScale = new Vector3(ca.size, ca.size, ca.size);
+        camera.transform.localPosition = new Vector3(0, 0, -2 * ca.size);
     }
 
     public void SetSimulationsPerSec(string sps)
