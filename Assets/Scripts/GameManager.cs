@@ -152,7 +152,10 @@ public class GameManager : MonoBehaviour
     public void SetSimulationsPerSec(string sps)
     {
         if (sps.Length < 1) return;
+
+        if (!int.TryParse(sps, out _)) return;
         simsPerSec = int.Parse(sps);
+
         if (simsPerSec == 0)
         {
             dynamicSimsPerSec = true;
