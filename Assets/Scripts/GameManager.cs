@@ -136,6 +136,12 @@ public class GameManager : MonoBehaviour
 
         LOAD.SetActive(false);
         GENERATE.SetActive(true);
+
+        // initial values for testing
+        SetSize("32");
+        SetSimulationsPerSec("0");
+        SetSimulationsPerRender("1");
+        SetTerminalVelocity("5");
     }
 
     public void SetSize(string size)
