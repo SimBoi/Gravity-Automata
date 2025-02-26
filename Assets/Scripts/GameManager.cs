@@ -109,30 +109,30 @@ public class GameManager : MonoBehaviour
 
     public void LoadObj()
     {
-        var extensions = new[] { new ExtensionFilter("Obj Files", "obj") };
-        var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, true);
-        GameObject loadedObj = new OBJLoader().Load(paths[0]);
-        loadedObj.transform.localScale = Vector3.one;
-        loadedObj.layer = 6;
+        // var extensions = new[] { new ExtensionFilter("Obj Files", "obj") };
+        // var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, true);
+        // GameObject loadedObj = new OBJLoader().Load(paths[0]);
+        // loadedObj.transform.localScale = Vector3.one;
+        // loadedObj.layer = 6;
 
-        foreach (Transform child in loadedObj.GetComponentsInChildren<Transform>())
-        {
-            if (child.GetComponent<MeshFilter>())
-            {
-                child.gameObject.AddComponent<MeshCollider>();
-                child.gameObject.layer = 7;
-            }
-        }
+        // foreach (Transform child in loadedObj.GetComponentsInChildren<Transform>())
+        // {
+        //     if (child.GetComponent<MeshFilter>())
+        //     {
+        //         child.gameObject.AddComponent<MeshCollider>();
+        //         child.gameObject.layer = 7;
+        //     }
+        // }
 
-        Bounds bounds = new Bounds(loadedObj.transform.position, Vector3.zero);
-        foreach (Renderer r in loadedObj.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(r.bounds);
-        float scale = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-        loadedObj.transform.localScale *= 0.9f * ca.size / scale;
-        loadedObj.AddComponent<BoxCollider>();
-        loadedObj.GetComponent<BoxCollider>().size = bounds.size;
-        loadedObj.GetComponent<BoxCollider>().center = bounds.center;
+        // Bounds bounds = new Bounds(loadedObj.transform.position, Vector3.zero);
+        // foreach (Renderer r in loadedObj.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(r.bounds);
+        // float scale = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+        // loadedObj.transform.localScale *= 0.9f * ca.size / scale;
+        // loadedObj.AddComponent<BoxCollider>();
+        // loadedObj.GetComponent<BoxCollider>().size = bounds.size;
+        // loadedObj.GetComponent<BoxCollider>().center = bounds.center;
 
-        loadedObj.transform.parent = loadedObject.transform;
+        // loadedObj.transform.parent = loadedObject.transform;
 
         LOAD.SetActive(false);
         GENERATE.SetActive(true);
