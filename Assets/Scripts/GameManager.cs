@@ -41,6 +41,10 @@ public class GameManager : MonoBehaviour
     public Text rolloutInfo;
     public bool aiCalculating = false;
     public int rolloutCount = 0;
+    public Text sizeText;
+    public Text simsPerSecText;
+    public Text simsPerRenderText;
+    public Text terminalVelocityText;
 
     [HideInInspector]
     public bool simulate = false, dynamicSimsPerSec = false;
@@ -147,6 +151,8 @@ public class GameManager : MonoBehaviour
         water.transform.position = new Vector3(-ca.size / 2, -ca.size / 2, -ca.size / 2);
         envBounds.transform.localScale = new Vector3(ca.size, ca.size, ca.size);
         camera.transform.localPosition = new Vector3(0, 0, -2 * ca.size);
+
+        sizeText.text = "<b>Size:</b> " + ca.size + "x" + ca.size + "x" + ca.size;
     }
 
     public void SetSimulationsPerSec(string sps)
@@ -159,12 +165,16 @@ public class GameManager : MonoBehaviour
         if (simsPerSec == 0)
         {
             dynamicSimsPerSec = true;
+
+            simsPerSecText.text = "<b>Simulations per second:</b> Dynamic";
         }
         else
         {
             dynamicSimsPerSec = false;
             rendersPerSec = simsPerSec / simsPerRender;
             ca.fps = simsPerSec;
+
+            simsPerSecText.text = "<b>Simulations per second:</b> " + simsPerSec;
         }
     }
 
@@ -173,12 +183,16 @@ public class GameManager : MonoBehaviour
         if (spr.Length < 1) return;
         simsPerRender = int.Parse(spr);
         rendersPerSec = simsPerSec / simsPerRender;
+
+        simsPerRenderText.text = "<b>Simulations per render:</b> " + simsPerRender;
     }
 
     public void SetTerminalVelocity(string terminalVelocity)
     {
         if (terminalVelocity.Length < 1) return;
         ca.terminalVelocity = int.Parse(terminalVelocity);
+
+        terminalVelocityText.text = "<b>Terminal velocity:</b> " + ca.terminalVelocity;
     }
 
     public void GenerateEnvironment()
