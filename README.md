@@ -39,6 +39,25 @@ The 2D demo provides an easy way to explore the simulation and AI functionalitie
 1. **Access the Demo**: Navigate to the [Releases page](https://github.com/SimBoi/Gravity-Automata/releases) to download the demo version.
 2. **Try Pre-Configured Grids**: Experiment with different pre-configured grids to see how the simulation behaves and how the AI performs.
 
+## Building an Executable
+
+To build an executable for Gravity-Automata in Unity, follow these steps:
+
+1. **Open the Unity Project**
+   - Download the source code project files.
+   - Launch Unity and open the Gravity-Automata project.
+   
+2. **Configure Build Settings**
+   - Go to `File` > `Build Settings`.
+   - Select the target platform (e.g., Windows, macOS, Linux).
+
+3. **Build the Executable**
+   - Click `Build` and select a target folder to save the executable.
+   - Unity will compile and generate the necessary files.
+   
+4. **Run the Executable**
+   - Navigate to the build folder and run `GravityAutomata.exe` (or equivalent for your OS).
+
 ## Notes
 
 - Ensure that the 3D model you import is a closed shape to ensure proper functionality of the scanline algorithm for barrier approximation.
