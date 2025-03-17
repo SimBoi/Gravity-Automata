@@ -1,6 +1,6 @@
 <h1 align="center">
     Gravity-Automata
-    <img src="https://img.shields.io/badge/Unity-2022.3.11f1-blue?logo=unity&logoColor=white&style=for-the-badge">
+    <img src="https://img.shields.io/badge/Unity-2022.3.52f1-blue?logo=unity&logoColor=white&style=for-the-badge">
 </h1>
 
 ## Overview
