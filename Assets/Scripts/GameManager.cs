@@ -135,11 +135,18 @@ public class GameManager : MonoBehaviour
         loadedObj.AddComponent<BoxCollider>();
         loadedObj.GetComponent<BoxCollider>().size = bounds.size;
         loadedObj.GetComponent<BoxCollider>().center = bounds.center;
+        // transform the object to the center of the environment
+        loadedObj.transform.position = -bounds.center * loadedObj.transform.localScale.x;
 
         loadedObj.transform.parent = loadedObject.transform;
 
         LOAD.SetActive(false);
         GENERATE.SetActive(true);
+
+        SetSize("32");
+        SetSimulationsPerSec("0");
+        SetSimulationsPerRender("1");
+        SetTerminalVelocity("5");
     }
 
     public void SetSize(string size)
