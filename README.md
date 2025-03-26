@@ -61,6 +61,5 @@ To build an executable for Gravity-Automata in Unity, follow these steps:
 ## Notes
 
 - Ensure that the 3D model you import is a closed shape to ensure proper functionality of the scanline algorithm for barrier approximation.
-- Ensure your 3D model is properly scaled to fit within the grid dimensions.
 - The simulation performance may vary based on the grid size and other parameters.
 - For detailed documentation and technical insights, refer to [the project report](https://github.com/SimBoi/Gravity-Automata/blob/main/project_report.pdf).
